@@ -34,7 +34,7 @@ static void print_help(void)
 	       "  -C, --target-config    path to target config\n"
 	       "  -J, --target-job-log   path to target joblog\n"
 	       "\n"
-	       "  -v, --verbose          leval of verbosity\n"
+	       "  -v, --verbose          level of verbosity\n"
 	       "  -V, --version          output version information and exit\n"
 	       "  -h, --help             show this help message and exit\n");
 }

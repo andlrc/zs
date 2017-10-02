@@ -4,8 +4,8 @@ zs \- Copy objects from one AS/400 to another
 
 .SH "SYNOPSIS"
 
-zs { { -s=server | -u=user | -p=password | -c=file }...
-     { -S=server | -U=user | -P=password | -C=file }...
+zs { { -s=server | -u=user | -p=password | -j=file | -c=file }...
+     { -S=server | -U=user | -P=password | -J=file | -C=file }...
      { LIB/OBJ [ *TYPE ] }...
      | --help | --version }
 
@@ -14,45 +14,45 @@ zs copies objects from one AS/400 to another via FTP.
 
 .SH "OPTIONS"
 
-Each option is read in sequence making it possible to override options via a later defined config file.
+Each option is read in sequence making it possible to override options via a
+later defined config file.
 
-.IP "\fB-s\fR, \fB--source-server\fR"
+.IP "\fB-s\fR, \fB--source-server\fR=\fIserver\fR"
 set source server
 
-.IP "\fB-u\fR, \fB--source-user\fR"
+.IP "\fB-u\fR, \fB--source-user\fR=\fIuser\fR"
 set source user profile
 
-.IP "\fB-p\fR, \fB--source-password\fR"
+.IP "\fB-p\fR, \fB--source-password\fR=\fIpassword\fR"
 set source user password
 
-.IP "\fB-c\fR, \fB--source-config\fR"
+.IP "\fB-c\fR, \fB--source-config\fR=\fIfile\fR"
 path to source config
 
-.IP "\fB-j\fR, \fB--source-job-log\fR"
+.IP "\fB-j\fR, \fB--source-job-log\fR=\fIfile\fR"
 path to source joblog
 
 
-.IP "\fB-S\fR, \fB--target-server\fR"
+.IP "\fB-S\fR, \fB--target-server\fR=\fIserver\fR"
 set target server
 
-.IP "\fB-U\fR, \fB--target-user\fR"
+.IP "\fB-U\fR, \fB--target-user\fR=\fIuser\fR"
 set target user profile
 
-.IP "\fB-P\fR, \fB--target-password\fR"
+.IP "\fB-P\fR, \fB--target-password\fR=\fIpassword\fR"
 set target user password
 
-.IP "\fB-L\fR, \fB--target-library\fR"
+.IP "\fB-L\fR, \fB--target-library\fR=\fIlibrary\fR"
 set target library
 
-.IP "\fB-C\fR, \fB--target-config\fR"
+.IP "\fB-C\fR, \fB--target-config\fR=\fIfile\fR"
 path to target config
 
-.IP "\fB-J\fR, \fB--target-job-log\fR"
+.IP "\fB-J\fR, \fB--target-job-log\fR=\fIfile\fR"
 path to target joblog
 
-
 .IP "\fB-v\fR, \fB--verbose\fR"
-leval of verbosity
+level of verbosity, can be specified multiply times
 
 .IP "\fB-V\fR, \fB--version\fR"
 output version information and exit
@@ -60,30 +60,42 @@ output version information and exit
 .IP "\fB-h\fR, \fB--help\fR"
 show this help message and exit
 
+.SH "OBJECTS"
+
+An object takes the following form:
+
+.RS
+{ LIBRARY "/" OBJECT *TYPE | LIBRARY "/" OBJECT }
+.RE
+
+\fILIBRARY\fR is the library where the object recites, max. 10 characters.
+
+\fIOBJECT\fR is the object, max. 10 characters.
+
+\fITYPE\fR is an optional type to transfer, \fB*ALL\fR is used when omitted.
+Consult your local system administrator for a list of supported types.
+
 .SH "CONFIG"
-A config file takes the following format:
+A config file takes the following form:
 
 .RS
-{ # .* | KEY SP+ VALUE }
+{ \fI"#"\fR .* | \fIKEY\fR \fISP\fR+ \fIVALUE\fR }
 .RE
 
-"#" marks a comment to the end of the line
+\fI#\fR marks a comment to the end of the line
 
-"KEY" is one of the following:
+\fIKEY\fR is one of the following:
+\fBuser\fR,
+\fBpassword\fR,
+\fBserver\fR, and
+\fBjoblog\fR.
 
-.RS
-user
-.bp
-password
-.bp
-server
-.RE
+\fISP\fR is one or more of space (0x20) and tab characters (0x09)
 
-"SP" is a space (0x20) or tab character (0x09)
+\fIVALUE\fR can be any character except a newline (0x0A)
 
-"VALUE" can be any character except a newline (0x0A)
-
-Making a valid configuration file containing username and password look like this:
+Making a valid configuration file containing username and password look like
+this:
 
 .RS
 user QSEQOFR

@@ -126,6 +126,13 @@ int Z_cfgfile(struct Z_server *server, char *cfgfile)
 				continue;	/* while */
 			}
 			break;
+		case 'j':
+			if (strcmp(pkey, "joblog") == 0) {
+				if (!(server->joblog = strdup(pval)))
+					return -1;
+				continue;	/* while */
+			}
+			break;
 		}
 
 		errno = EBADMSG;
