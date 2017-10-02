@@ -7,6 +7,21 @@
 #include <string.h>
 #include <errno.h>
 #include <ctype.h>
+#include <stdarg.h>
+
+#define Z_VAL500(server, resbuf)					\
+	do {								\
+		if (*resbuf == '5') {					\
+			errno = EIO;					\
+			/* Read off another line */			\
+			if (Z_recvline(server, resbuf,			\
+				       sizeof(resbuf), 0) == -1)	\
+				return -1;				\
+			if (Z_printf(server, Z_OUTFTP, resbuf) == -1)	\
+				return -1;				\
+			return -1;					\
+		}							\
+	} while(0);
 
 int Z_addobject(struct Z_server *server, char *objbuf)
 {
@@ -43,8 +58,7 @@ int Z_addobject(struct Z_server *server, char *objbuf)
 		pbuf = pbufsep;
 		strncpy(pobj->type, pbuf, sizeof(pobj->type));
 		pobj->type[sizeof(pobj->type) - 1] = '\0';
-	}
-	else {
+	} else {
 		strcpy(pobj->type, "ALL");
 	}
 
@@ -95,21 +109,21 @@ int Z_cfgfile(struct Z_server *server, char *cfgfile)
 			if (strcmp(pkey, "server") == 0) {
 				if (!(server->server = strdup(pval)))
 					return -1;
-				continue; /* while */
+				continue;	/* while */
 			}
 			break;
 		case 'u':
 			if (strcmp(pkey, "user") == 0) {
 				if (!(server->user = strdup(pval)))
 					return -1;
-				continue; /* while */
+				continue;	/* while */
 			}
 			break;
 		case 'p':
 			if (strcmp(pkey, "password") == 0) {
 				if (!(server->password = strdup(pval)))
 					return -1;
-				continue; /* while */
+				continue;	/* while */
 			}
 			break;
 		}
@@ -136,10 +150,7 @@ int Z_cmd(struct Z_server *server, char *reqbuf)
 	if (Z_printf(server, Z_OUTFTP, resbuf) == -1)
 		return -1;
 
-	if (*resbuf == '5') {
-		errno = EIO;
-		return -1;
-	}
+	Z_VAL500(server, resbuf);
 
 	return 0;
 }
@@ -197,7 +208,7 @@ int Z_get(struct Z_server *server, char *local, char *remote)
 		if (write(localfd, resbuf, reslen) != reslen)
 			goto recverror;
 
-	} while(reslen != 0);
+	} while (reslen != 0);
 
 	close(localfd);
 	close(sock);
@@ -209,24 +220,32 @@ int Z_get(struct Z_server *server, char *local, char *remote)
 		if (Z_printf(server, Z_OUTFTP, resbuf) == -1)
 			return -1;
 
-		if (*resbuf == '5') {
-			errno = EIO;
-			return -1;
-		}
+		Z_VAL500(server, resbuf);
 
 	} while (strncmp(resbuf, "226", 3) != 0);
 
 	return 0;
 
-recverror:
+      recverror:
 	close(localfd);
 	close(sock);
 	return -1;
 }
 
-int Z_joblog(struct Z_server *server, char *output)
+int Z_joblog(struct Z_server *server, char *outfile)
 {
-	fprintf(stderr, "No implemeted\n");
+	if (Z_system(server, Z_CMD_JOBLOG1) == -1)
+		return -1;
+	if (Z_system(server, Z_CMD_JOBLOG2) == -1)
+		return -1;
+	if (Z_system(server, Z_CMD_JOBLOG3) == -1)
+		return -1;
+	if (Z_system(server, Z_CMD_JOBLOG4) == -1)
+		return -1;
+	if (Z_system(server, Z_CMD_JOBLOG5) == -1)
+		return 1;
+	if (Z_get(server, outfile, "/tmp/zslog") == -1)
+		return -1;
 	return 0;
 }
 
@@ -261,26 +280,30 @@ int Z_pasv(struct Z_server *server)
 	addr.sin_family = AF_INET;
 	addr.sin_port = htons(port);
 
-	if (connect(sock, (struct sockaddr *)&addr, sizeof(addr)) < 0)
+	if (connect(sock, (struct sockaddr *) &addr, sizeof(addr)) < 0)
 		return -1;
 
 	return sock;
 }
 
-int Z_printf(struct Z_server *server, enum Z_outputtype type, char *msg)
+int Z_printf(struct Z_server *server, enum Z_outputtype type, char *msg, ...)
 {
-	switch (type)
-	{
+	char buf[BUFSIZ];
+	va_list ap;
+	va_start(ap, msg);
+	vsnprintf(buf, sizeof(buf), msg, ap);
+	va_end(ap);
+	switch (type) {
 	case Z_OUTFTP:
 		if (server->verbose > 0)
-			printf("response: %s", msg);
+			printf("response: %s", buf);
 		break;
 	case Z_OUTCMD:
 		if (strncasecmp(msg, "PASS", 4) == 0) {
 			msg = "PASS ********";
 		}
 		if (server->verbose > 1)
-			printf("command: %s\n", msg);
+			printf("command: %s\n", buf);
 		break;
 	default:
 		errno = EINVAL;
@@ -315,7 +338,7 @@ int Z_put(struct Z_server *server, char *remote, char *local)
 		if (write(sock, resbuf, reslen) != reslen)
 			goto writeerror;
 
-	} while(reslen != 0);
+	} while (reslen != 0);
 
 	close(localfd);
 	close(sock);
@@ -327,16 +350,13 @@ int Z_put(struct Z_server *server, char *remote, char *local)
 		if (Z_printf(server, Z_OUTFTP, resbuf) == -1)
 			return -1;
 
-		if (*resbuf == '5') {
-			errno = EIO;
-			return -1;
-		}
+		Z_VAL500(server, resbuf);
 
 	} while (strncmp(resbuf, "226", 3) != 0);
 
 	return 0;
 
-writeerror:
+      writeerror:
 	close(localfd);
 	close(sock);
 	return -1;
@@ -391,14 +411,14 @@ int Z_recvline(struct Z_server *server, char *destbuf,
 		pbufend += reslen;
 	} while (!pbufnl);
 
-	nloff = pbufnl - pbuf;		/* CR NL */
+	nloff = pbufnl - pbuf;	/* CR NL */
 	if (nloff + 1 > destbufsiz) {
 		errno = EOVERFLOW;
 		return -1;
 	}
 
 	strncpy(destbuf, pbuf, nloff);
-	destbuf[nloff] = '\n';		/* CR */
+	destbuf[nloff] = '\n';	/* CR */
 	destbuf[nloff + 1] = '\0';	/* NL */
 
 	memmove(pbuf, pbufnl + 2, pbufend - (pbufnl + 1));
@@ -430,11 +450,16 @@ int Z_signon(struct Z_server *server)
 	return 0;
 }
 
-int Z_system(struct Z_server *server, char *cmd)
+int Z_system(struct Z_server *server, char *cmd, ...)
 {
+	char buf[BUFSIZ];
 	char reqbuf[BUFSIZ];
+	va_list ap;
+	va_start(ap, cmd);
+	vsnprintf(buf, sizeof(buf), cmd, ap);
+	va_end(ap);
+	snprintf(reqbuf, sizeof(reqbuf), "RCMD %s", buf);
 
-	snprintf(reqbuf, sizeof(reqbuf), "RCMD %s", cmd);
 	if (Z_cmd(server, reqbuf) == -1)
 		return -1;
 

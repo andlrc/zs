@@ -6,11 +6,11 @@
 #define	Z_MAXOBJ	16
 #define	Z_FTPPORT	21
 
-#define	Z_CMD_CRTSAVF	"CRTSAVF FILE(QTEMP/ZS%d)"
-#define Z_CMD_SAVOBJ	"SAVOBJ OBJ(%s) OBJTYPE(*%s) LIB(%s) DEV(*SAVF) SAVF(QTEMP/ZS%d) DTACPR(*HIGH)"
-#define	Z_CMD_CPYTOSTMF	"CPYTOSTMF FROMMBR('/QSYS.LIB/QTEMP.LIB/ZS%d.FILE') TOSTMF('/tmp/zs%d.savf') STMFOPT(*REPLACE)"
-#define Z_CMD_CPYFRMSTMF	"CPYFRMSTMF FROMSTMF('/tmp/zs%d.savf') TOMBR('/QSYS.LIB/QTEMP.LIB/ZS%d.FILE')"
-#define Z_CMD_RSTOBJ	"RSTOBJ OBJ(*ALL) SAVLIB(%s) DEV(*SAVF) SAVF(QTEMP/ZS%d) MBROPT(*ALL) RSTLIB(%s)"
+#define	Z_CMD_JOBLOG1	"CRTPF FILE(QTEMP/ZSLOG) RCDLEN(528) SIZE(1000000 10000 100)"
+#define Z_CMD_JOBLOG2	"OVRPRTF FILE(QPJOBLOG) HOLD(*YES) SPLFOWN(*JOB) OVRSCOPE(*JOB)"
+#define	Z_CMD_JOBLOG3	"DSPJOBLOG OUTPUT(*PRINT)"
+#define	Z_CMD_JOBLOG4	"CPYSPLF JOB(*) FILE(QPJOBLOG) TOFILE(QTEMP/ZSLOG) SPLNBR(*LAST)"
+#define	Z_CMD_JOBLOG5	"CPYTOSTMF FROMMBR('/QSYS.LIB/QTEMP.LIB/ZSLOG.FILE/ZSLOG.MBR') TOSTMF('/tmp/zslog') STMFOPT(*REPLACE) STMFCCSID(1208)"
 
 struct Z_object {
 	char library[11];
@@ -20,7 +20,6 @@ struct Z_object {
 
 struct Z_server {
 	int sock;
-	int datasock;
 	int verbose;
 	char *server;
 	char *user;
@@ -43,13 +42,13 @@ int Z_connect(struct Z_server *server);
 int Z_get(struct Z_server *server, char *local, char *remote);
 int Z_joblog(struct Z_server *server, char *output);
 int Z_pasv(struct Z_server *server);
-int Z_printf(struct Z_server *server, enum Z_outputtype flags, char *msg);
+int Z_printf(struct Z_server *server, enum Z_outputtype flags, char *msg, ...);
 int Z_put(struct Z_server *server, char *remote, char *local);
 int Z_quit(struct Z_server *server);
 int Z_recvline(struct Z_server *server, char *destbuf,
 	       size_t destbufsiz, int flags);
 int Z_signon(struct Z_server *server);
-int Z_system(struct Z_server *server, char *reqbuf);
+int Z_system(struct Z_server *server, char *reqbuf, ...);
 int Z_write(struct Z_server *server, char *reqbuf);
 
 #endif

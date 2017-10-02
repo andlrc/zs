@@ -36,8 +36,7 @@ static void print_help(void)
 	       "\n"
 	       "  -v, --verbose          leval of verbosity\n"
 	       "  -V, --version          output version information and exit\n"
-	       "  -h, --help             show this help message and exit\n"
-	);
+	       "  -h, --help             show this help message and exit\n");
 }
 
 static struct option const long_options[] = {
@@ -70,47 +69,42 @@ int save(struct Z_server *server)
 
 	if (Z_connect(server) == -1) {
 		perror("Z_connect()");
-		return 1;
+		goto error;
 	}
 
 	if (Z_signon(server) == -1) {
 		perror("Z_signon()");
-		return 1;
+		goto error;
 	}
 
 	if (Z_cmd(server, "type I") == -1) {
 		perror("Z_cmd()");
-		return 1;
+		goto error;
 	}
 
-	for (i = 0; i < server->objectlen; i++)
-	{
+	for (i = 0; i < server->objectlen; i++) {
 		pobj = &server->objects[i];
 
-		snprintf(reqbuf, sizeof(reqbuf), Z_CMD_CRTSAVF, i);
-		if (Z_system(server, reqbuf) == -1) {
+		if (Z_system(server, CMD_SAVE1, i) == -1) {
 			perror("Z_system()");
-			return 1;
+			goto error;
 		}
 
-		snprintf(reqbuf, sizeof(reqbuf), Z_CMD_SAVOBJ,
-			 pobj->object, pobj->type, pobj->library, i);
-		if (Z_system(server, reqbuf) == -1) {
+		if (Z_system(server, CMD_SAVE2, pobj->object,
+			     pobj->type, pobj->library, i) == -1) {
 			perror("Z_system()");
-			return 1;
+			goto error;
 		}
 
-		snprintf(reqbuf, sizeof(reqbuf), Z_CMD_CPYTOSTMF,
-			 i, i);
-		if (Z_system(server, reqbuf) == -1) {
+		if (Z_system(server, CMD_SAVE3, i, i) == -1) {
 			perror("Z_system()");
-			return 1;
+			goto error;
 		}
 
 		snprintf(reqbuf, sizeof(reqbuf), "/tmp/zs%d.savf", i);
 		if (Z_get(server, reqbuf, reqbuf) == -1) {
 			perror("Z_get()");
-			return 1;
+			goto error;
 		}
 	}
 
@@ -122,6 +116,12 @@ int save(struct Z_server *server)
 	Z_quit(server);
 
 	return 0;
+
+      error:
+	if (server->joblog && Z_joblog(server, server->joblog) == -1)
+		return 1;
+	return 1;
+
 }
 
 int restore(struct Z_server *server, struct Z_server *srcserver)
@@ -145,8 +145,7 @@ int restore(struct Z_server *server, struct Z_server *srcserver)
 		return 1;
 	}
 
-	for (i = 0; i < srcserver->objectlen; i++)
-	{
+	for (i = 0; i < srcserver->objectlen; i++) {
 		pobj = &srcserver->objects[i];
 
 		snprintf(reqbuf, sizeof(reqbuf), "/tmp/zs%d.savf", i);
@@ -155,15 +154,13 @@ int restore(struct Z_server *server, struct Z_server *srcserver)
 			return 1;
 		}
 
-		snprintf(reqbuf, sizeof(reqbuf), Z_CMD_CPYFRMSTMF, i, i);
-		if (Z_system(server, reqbuf) == -1) {
+		if (Z_system(server, CMD_RESTORE1, i, i) == -1) {
 			perror("Z_system()");
 			return 1;
 		}
 
-		snprintf(reqbuf, sizeof(reqbuf), Z_CMD_RSTOBJ,
-			 pobj->library, i, server->library);
-		if (Z_system(server, reqbuf) == -1) {
+		if (Z_system(server, CMD_RESTORE2, pobj->library,
+			     i, pobj->library) == -1) {
 			perror("Z_system()");
 			return 1;
 		}
