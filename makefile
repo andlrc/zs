@@ -14,3 +14,11 @@ clean:
 
 debug: clean
 	$(MAKE) CFLAGS="-g"
+
+install:
+	cp zs /usr/bin/zs
+	cp zs.1 /usr/share/man/man1/zs.1
+
+uninstall:
+	-rm /usr/bin/zs
+	-rm /usr/share/man/man1/zs.1

@@ -1,0 +1,92 @@
+.TH zs 1
+.SH "NAME"
+zs \- Copy objects from one AS/400 to another
+
+.SH "SYNOPSIS"
+
+zs { { -s=server | -u=user | -p=password | -c=file }...
+     { -S=server | -U=user | -P=password | -C=file }...
+     { LIB/OBJ [ *TYPE ] }...
+     | --help | --version }
+
+.SH "DESCRIPTION"
+zs copies objects from one AS/400 to another via FTP.
+
+.SH "OPTIONS"
+
+Each option is read in sequence making it possible to override options via a later defined config file.
+
+.IP "\fB-s\fR, \fB--source-server\fR"
+set source server
+
+.IP "\fB-u\fR, \fB--source-user\fR"
+set source user profile
+
+.IP "\fB-p\fR, \fB--source-password\fR"
+set source user password
+
+.IP "\fB-c\fR, \fB--source-config\fR"
+path to source config
+
+.IP "\fB-j\fR, \fB--source-job-log\fR"
+path to source joblog
+
+
+.IP "\fB-S\fR, \fB--target-server\fR"
+set target server
+
+.IP "\fB-U\fR, \fB--target-user\fR"
+set target user profile
+
+.IP "\fB-P\fR, \fB--target-password\fR"
+set target user password
+
+.IP "\fB-L\fR, \fB--target-library\fR"
+set target library
+
+.IP "\fB-C\fR, \fB--target-config\fR"
+path to target config
+
+.IP "\fB-J\fR, \fB--target-job-log\fR"
+path to target joblog
+
+
+.IP "\fB-v\fR, \fB--verbose\fR"
+leval of verbosity
+
+.IP "\fB-V\fR, \fB--version\fR"
+output version information and exit
+
+.IP "\fB-h\fR, \fB--help\fR"
+show this help message and exit
+
+.SH "CONFIG"
+A config file takes the following format:
+
+.RS
+{ # .* | KEY SP+ VALUE }
+.RE
+
+"#" marks a comment to the end of the line
+
+"KEY" is one of the following:
+
+.RS
+user
+.bp
+password
+.bp
+server
+.RE
+
+"SP" is a space (0x20) or tab character (0x09)
+
+"VALUE" can be any character except a newline (0x0A)
+
+Making a valid configuration file containing username and password look like this:
+
+.RS
+user QSEQOFR
+.bp
+password secure
+.RE
