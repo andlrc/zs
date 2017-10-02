@@ -1,4 +1,4 @@
-CFLAGS	= -Wall -Werror
+CFLAGS	= -Wall -Werror -O2
 OFILES	= main.o zs.o
 
 all:	zs
