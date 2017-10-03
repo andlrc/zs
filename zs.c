@@ -8,6 +8,7 @@
 #include <errno.h>
 #include <ctype.h>
 #include <stdarg.h>
+#include <limits.h>
 
 #define Z_VAL500(server, resbuf)					\
 	do {								\
@@ -76,6 +77,13 @@ int Z_cfgfile(struct Z_server *server, char *cfgfile)
 	char *pkey;
 	char *pval;
 	int vallen;
+	char filebuf[PATH_MAX];
+
+	/* Use /etc/zs/$FILE.conf instead */
+	if (!strchr(cfgfile, '/') && !strchr(cfgfile, '.')) {
+		snprintf(filebuf, sizeof(filebuf), "/etc/zs/%s.conf", cfgfile);
+		cfgfile = filebuf;
+	}
 
 	if (!(fp = fopen(cfgfile, "r")))
 		return -1;
