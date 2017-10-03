@@ -24,6 +24,16 @@
 		}							\
 	} while(0);
 
+static char *exphomedir(char *newpath, size_t siz, char *path)
+{
+	if (path[0] == '~' && path[1] == '/')
+		snprintf(newpath, siz, "%s/%s", getenv("HOME"), path + 2);
+	else
+		strncpy(newpath, path, siz);
+
+	return newpath;
+}
+
 int Z_addobject(struct Z_server *server, char *objbuf)
 {
 	struct Z_object *pobj;
@@ -112,39 +122,23 @@ int Z_cfgfile(struct Z_server *server, char *cfgfile)
 			pval[vallen - 2] = '\0';
 
 		/* TODO: A bit of memory leak? */
-		switch (*pkey) {
-		case 's':
-			if (strcmp(pkey, "server") == 0) {
-				if (!(server->server = strdup(pval)))
-					return -1;
-				continue;	/* while */
-			}
-			break;
-		case 'u':
-			if (strcmp(pkey, "user") == 0) {
-				if (!(server->user = strdup(pval)))
-					return -1;
-				continue;	/* while */
-			}
-			break;
-		case 'p':
-			if (strcmp(pkey, "password") == 0) {
-				if (!(server->password = strdup(pval)))
-					return -1;
-				continue;	/* while */
-			}
-			break;
-		case 'j':
-			if (strcmp(pkey, "joblog") == 0) {
-				if (!(server->joblog = strdup(pval)))
-					return -1;
-				continue;	/* while */
-			}
-			break;
+		if (strcmp(pkey, "server") == 0) {
+			if (!(server->server = strdup(pval)))
+				return -1;
+		} else if (strcmp(pkey, "user") == 0) {
+			if (!(server->user = strdup(pval)))
+				return -1;
+		} else if (strcmp(pkey, "password") == 0) {
+			if (!(server->password = strdup(pval)))
+				return -1;
+		} else if (strcmp(pkey, "joblog") == 0) {
+			exphomedir(filebuf, sizeof(filebuf), pval);
+			if (!(server->joblog = strdup(filebuf)))
+				return -1;
+		} else {
+			errno = EBADMSG;
+			return -1;
 		}
-
-		errno = EBADMSG;
-		return -1;
 	}
 
 	free(linebuf);
