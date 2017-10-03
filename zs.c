@@ -253,15 +253,23 @@ void Z_initserver(struct Z_server *server)
 
 int Z_joblog(struct Z_server *server, char *outfile)
 {
-	if (Z_system(server, Z_CMD_JOBLOG1) == -1)
+
+	if (Z_system(server,
+		     "CRTPF FILE(QTEMP/ZSLOG) RCDLEN(528) "
+		     "SIZE(1000000 10000 100)") == -1)
 		return -1;
-	if (Z_system(server, Z_CMD_JOBLOG2) == -1)
+	if (Z_system(server, "OVRPRTF FILE(QPJOBLOG) HOLD(*YES) "
+		     "SPLFOWN(*JOB) OVRSCOPE(*JOB)") == -1)
 		return -1;
-	if (Z_system(server, Z_CMD_JOBLOG3) == -1)
+	if (Z_system(server, "DSPJOBLOG OUTPUT(*PRINT)") == -1)
 		return -1;
-	if (Z_system(server, Z_CMD_JOBLOG4) == -1)
+	if (Z_system(server, "CPYSPLF JOB(*) FILE(QPJOBLOG) "
+		     "TOFILE(QTEMP/ZSLOG) SPLNBR(*LAST)") == -1)
 		return -1;
-	if (Z_system(server, Z_CMD_JOBLOG5) == -1)
+	if (Z_system(server, "CPYTOSTMF "
+		     "FROMMBR('/QSYS.LIB/QTEMP.LIB/ZSLOG.FILE/ZSLOG.MBR') "
+		     "TOSTMF('/tmp/zslog') STMFOPT(*REPLACE) "
+		     "STMFCCSID(1208)") == -1)
 		return 1;
 	if (Z_get(server, outfile, "/tmp/zslog") == -1)
 		return -1;

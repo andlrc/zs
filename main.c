@@ -85,18 +85,25 @@ static int save(struct Z_server *server)
 	for (i = 0; i < server->objectlen; i++) {
 		pobj = &server->objects[i];
 
-		if (Z_system(server, CMD_SAVE1, i) == -1) {
+		if (Z_system(server, "CRTSAVF FILE(QTEMP/ZS%d)", i) == -1) {
 			perror("Z_system()");
 			goto error;
 		}
 
-		if (Z_system(server, CMD_SAVE2, pobj->object,
-			     pobj->type, pobj->library, i) == -1) {
+		if (Z_system(server,
+			     "SAVOBJ OBJ(%s) OBJTYPE(*%s) LIB(%s) "
+			     "DEV(*SAVF) SAVF(QTEMP/ZS%d) DTACPR(*HIGH)",
+			     pobj->object, pobj->type,
+			     pobj->library, i) == -1) {
 			perror("Z_system()");
 			goto error;
 		}
 
-		if (Z_system(server, CMD_SAVE3, i, i) == -1) {
+		if (Z_system(server,
+			     "CPYTOSTMF "
+			     "FROMMBR('/QSYS.LIB/QTEMP.LIB/ZS%d.FILE') "
+			     "TOSTMF('/tmp/zs%d.savf') STMFOPT(*REPLACE)",
+			     i, i) == -1) {
 			perror("Z_system()");
 			goto error;
 		}
@@ -154,13 +161,19 @@ static int restore(struct Z_server *server, struct Z_server *srcserver)
 			return 1;
 		}
 
-		if (Z_system(server, CMD_RESTORE1, i, i) == -1) {
+		if (Z_system(server,
+			     "CPYFRMSTMF FROMSTMF('/tmp/zs%d.savf') "
+			     "TOMBR('/QSYS.LIB/QTEMP.LIB/ZS%d.FILE')",
+			     i, i) == -1) {
 			perror("Z_system()");
 			return 1;
 		}
 
-		if (Z_system(server, CMD_RESTORE2, pobj->library,
-			     i, pobj->library) == -1) {
+		if (Z_system(server,
+			     "RSTOBJ OBJ(*ALL) SAVLIB(%s) "
+			     "DEV(*SAVF) SAVF(QTEMP/ZS%d) "
+			     "MBROPT(*ALL) RSTLIB(%s)",
+			     pobj->library, i, server->library) == -1) {
 			perror("Z_system()");
 			return 1;
 		}
