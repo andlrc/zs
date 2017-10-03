@@ -241,6 +241,16 @@ int Z_get(struct Z_server *server, char *local, char *remote)
 	return -1;
 }
 
+void Z_initserver(struct Z_server *server)
+{
+	memset(server, 0, sizeof(struct Z_server));
+	server->server = 0;
+	server->user = 0;
+	server->password = 0;
+	server->library = 0;
+	server->joblog = 0;
+}
+
 int Z_joblog(struct Z_server *server, char *outfile)
 {
 	if (Z_system(server, Z_CMD_JOBLOG1) == -1)

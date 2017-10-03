@@ -61,7 +61,7 @@ static struct option const long_options[] = {
 
 static char short_options[] = "vVhs:u:p:c:j:S:U:P:L:C:J:";
 
-int save(struct Z_server *server)
+static int save(struct Z_server *server)
 {
 	char reqbuf[BUFSIZ];
 	int i;
@@ -124,7 +124,7 @@ int save(struct Z_server *server)
 
 }
 
-int restore(struct Z_server *server, struct Z_server *srcserver)
+static int restore(struct Z_server *server, struct Z_server *srcserver)
 {
 	char reqbuf[BUFSIZ];
 	int i;
@@ -195,9 +195,8 @@ int main(int argc, char **argv)
 	struct Z_server srcserver;
 	struct Z_server destserver;
 
-	/* FIXME: Don't set pointers to int "0" */
-	memset(&srcserver, 0, sizeof(srcserver));
-	memset(&destserver, 0, sizeof(destserver));
+	Z_initserver(&srcserver);
+	Z_initserver(&destserver);
 
 	while ((c = getopt_long(argc, argv, short_options, long_options,
 				NULL)) != -1) {

@@ -40,6 +40,7 @@ int Z_cfgfile(struct Z_server *server, char *cfgfile);
 int Z_cmd(struct Z_server *server, char *reqbuf);
 int Z_connect(struct Z_server *server);
 int Z_get(struct Z_server *server, char *local, char *remote);
+void Z_initserver(struct Z_server *server);
 int Z_joblog(struct Z_server *server, char *output);
 int Z_pasv(struct Z_server *server);
 int Z_printf(struct Z_server *server, enum Z_outputtype flags, char *msg, ...);
