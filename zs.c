@@ -318,8 +318,8 @@ int Z_printf(struct Z_server *server, enum Z_outputtype type, char *msg, ...)
 			printf("response: %s", buf);
 		break;
 	case Z_OUTCMD:
-		if (strncasecmp(msg, "PASS", 4) == 0) {
-			msg = "PASS ********";
+		if (strncasecmp(buf, "PASS", 4) == 0) {
+			strcpy(buf, "PASS ********");
 		}
 		if (server->verbose > 1)
 			printf("command: %s\n", buf);
