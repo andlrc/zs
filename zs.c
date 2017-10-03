@@ -88,6 +88,11 @@ int Z_cfgfile(struct Z_server *server, char *cfgfile)
 	char *pval;
 	int vallen;
 	char filebuf[PATH_MAX];
+	int _errno;
+
+	if (Z_printf(server, Z_OUTINF, "Using config file: %s",
+		     cfgfile) == -1)
+		return -1;
 
 	/* Use /etc/zs/$FILE.conf instead */
 	if (!strchr(cfgfile, '/') && !strchr(cfgfile, '.')) {
@@ -96,10 +101,14 @@ int Z_cfgfile(struct Z_server *server, char *cfgfile)
 	}
 
 	if (!(fp = fopen(cfgfile, "r")))
-		return -1;
+		goto lineerror;
 
 	while (getline(&linebuf, &linesiz, fp) != -1) {
 		plinebuf = linebuf;
+
+		if (Z_printf(server, Z_OUTINF, "Reading config line: %s",
+			     linebuf) == -1)
+			goto lineerror;
 
 		/* Trim leading spaces */
 		while (isspace(*plinebuf))
@@ -124,26 +133,33 @@ int Z_cfgfile(struct Z_server *server, char *cfgfile)
 		/* TODO: A bit of memory leak? */
 		if (strcmp(pkey, "server") == 0) {
 			if (!(server->server = strdup(pval)))
-				return -1;
+				goto lineerror;
 		} else if (strcmp(pkey, "user") == 0) {
 			if (!(server->user = strdup(pval)))
-				return -1;
+				goto lineerror;
 		} else if (strcmp(pkey, "password") == 0) {
 			if (!(server->password = strdup(pval)))
-				return -1;
+				goto lineerror;
 		} else if (strcmp(pkey, "joblog") == 0) {
 			exphomedir(filebuf, sizeof(filebuf), pval);
 			if (!(server->joblog = strdup(filebuf)))
-				return -1;
+				goto lineerror;
 		} else {
 			errno = EBADMSG;
-			return -1;
+			goto lineerror;
 		}
 	}
 
 	free(linebuf);
 	fclose(fp);
 	return 0;
+
+      lineerror:
+	_errno = errno;
+	free(linebuf);
+	fclose(fp);
+	errno = _errno;
+	return -1;
 }
 
 int Z_cmd(struct Z_server *server, char *reqbuf)
@@ -201,6 +217,10 @@ int Z_get(struct Z_server *server, char *local, char *remote)
 	int sock;
 
 	if ((sock = Z_pasv(server)) == -1)
+		return -1;
+
+	if (Z_printf(server, Z_OUTINF, "Downloading file %s to %s",
+		     remote, local) == -1)
 		return -1;
 
 	snprintf(reqbuf, sizeof(reqbuf), "RETR %s", remote);
@@ -300,6 +320,10 @@ int Z_pasv(struct Z_server *server)
 	}
 	port = porta * 256 + portb;
 
+	if (Z_printf(server, Z_OUTINF, "Passive listening to port %d",
+		     port) == -1)
+		return -1;
+
 	if ((sock = socket(AF_INET, SOCK_STREAM, 0)) == -1)
 		return -1;
 
@@ -316,14 +340,19 @@ int Z_pasv(struct Z_server *server)
 int Z_printf(struct Z_server *server, enum Z_outputtype type, char *msg, ...)
 {
 	char buf[BUFSIZ];
+	char *pbufnl;
 	va_list ap;
 	va_start(ap, msg);
 	vsnprintf(buf, sizeof(buf), msg, ap);
 	va_end(ap);
+
+	/* Remove trailing newline */
+	if ((pbufnl = strrchr(buf, '\n')))
+		*pbufnl = '\0';
 	switch (type) {
 	case Z_OUTFTP:
 		if (server->verbose > 0)
-			printf("response: %s", buf);
+			printf("response: %s\n", buf);
 		break;
 	case Z_OUTCMD:
 		if (strncasecmp(buf, "PASS", 4) == 0) {
@@ -331,6 +360,10 @@ int Z_printf(struct Z_server *server, enum Z_outputtype type, char *msg, ...)
 		}
 		if (server->verbose > 1)
 			printf("command: %s\n", buf);
+		break;
+	case Z_OUTINF:
+		if (server->verbose > 2)
+			printf("info: %s\n", buf);
 		break;
 	default:
 		errno = EINVAL;
@@ -347,6 +380,10 @@ int Z_put(struct Z_server *server, char *remote, char *local)
 	int localfd;
 
 	int sock;
+
+	if (Z_printf(server, Z_OUTINF, "Uploading %s to %s",
+		     local, remote) == -1)
+		return -1;
 
 	if ((sock = Z_pasv(server)) == -1)
 		return -1;

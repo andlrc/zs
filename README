@@ -59,7 +59,8 @@ OPTIONS
               path to target joblog
 
        -v, --verbose
-              level of verbosity, can be specified multiply times
+              level  of verbosity, can be specified multiply times.  Should be
+              the first option, as it affect the verbosity of other options.
 
        -V, --version
               output version information and exit
@@ -76,7 +77,7 @@ OBJECTS
 
        OBJECT is the object, max. 10 characters.
 
-       TYPE  is an optional type to transfer, *ALL is used when omitted.  Con‐
+       TYPE is an optional type to transfer, *ALL is used when omitted.   Con‐
        sult your local system administrator for a list of supported types.
 
 CONFIG

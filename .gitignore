@@ -1,4 +1,5 @@
 tags
 a.conf
 *.o
+*~
 zs

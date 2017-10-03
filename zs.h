@@ -26,7 +26,8 @@ struct Z_server {
 
 enum Z_outputtype {
 	Z_OUTFTP,
-	Z_OUTCMD
+	Z_OUTCMD,
+	Z_OUTINF
 };
 
 int Z_addobject(struct Z_server *srcserver, char *obj);
