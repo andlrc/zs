@@ -1,7 +1,8 @@
 CFLAGS	= -Wall -Werror -O2
 OFILES	= main.o zs.o
 
-all:	zs
+.PHONY:	all clean debug install uninstall
+all:	zs README
 
 zs:	$(OFILES)
 	$(CC) -o $@ $(OFILES)
@@ -14,6 +15,9 @@ clean:
 
 debug: clean
 	$(MAKE) CFLAGS="-g"
+
+README:	zs.1 readme.sed
+	sed -f readme.sed $< | man -l - > $@
 
 install:
 	cp zs /usr/bin/zs

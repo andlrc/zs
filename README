@@ -1,0 +1,101 @@
+zs(1)                       General Commands Manual                      zs(1)
+
+NAME
+       zs - Copy objects from one AS/400 to another
+
+INSTALLATION
+       Preferably  you  would  install zs via your distribution's package man‐
+       ager, i.e. zs-git exists in AUR.
+
+       Manual installation can be followed below:
+
+              $ make
+              $ make install
+
+SYNOPSIS
+       zs { { -s=server | -u=user | -p=password | -j=file | -c=file }...
+            { -S=server | -U=user | -P=password | -J=file | -C=file }...
+            { LIB/OBJ [ *TYPE ] }...
+            | --help | --version }
+
+DESCRIPTION
+       zs copies objects from one AS/400 to another via FTP.
+
+OPTIONS
+       Each option is read in sequence making it possible to override  options
+       via a later defined config file.
+
+       -s, --source-server=server
+              set source server
+
+       -u, --source-user=user
+              set source user profile
+
+       -p, --source-password=password
+              set source user password
+
+       -c, --source-config=file
+              path to source config
+
+       -j, --source-job-log=file
+              path to source joblog
+
+       -S, --target-server=server
+              set target server
+
+       -U, --target-user=user
+              set target user profile
+
+       -P, --target-password=password
+              set target user password
+
+       -L, --target-library=library
+              set target library
+
+       -C, --target-config=file
+              path to target config
+
+       -J, --target-job-log=file
+              path to target joblog
+
+       -v, --verbose
+              level of verbosity, can be specified multiply times
+
+       -V, --version
+              output version information and exit
+
+       -h, --help
+              show this help message and exit
+
+OBJECTS
+       An object takes the following form:
+
+              { LIBRARY "/" OBJECT *TYPE | LIBRARY "/" OBJECT }
+
+       LIBRARY is the library where the object recites, max. 10 characters.
+
+       OBJECT is the object, max. 10 characters.
+
+       TYPE  is an optional type to transfer, *ALL is used when omitted.  Con‐
+       sult your local system administrator for a list of supported types.
+
+CONFIG
+       A config file takes the following form:
+
+              { "#" .* | KEY SP+ VALUE }
+
+       # marks a comment to the end of the line
+
+       KEY is one of the following: user, password, server, and joblog.
+
+       SP is one or more of space (0x20) and tab characters (0x09)
+
+       VALUE can be any character except a newline (0x0A)
+
+       Making a valid configuration file containing username and password look
+       like this:
+
+              user QSEQOFR
+              password secure
+
+                                                                         zs(1)
