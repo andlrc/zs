@@ -31,6 +31,8 @@ static char *exphomedir(char *newpath, size_t siz, char *path)
 	else
 		strncpy(newpath, path, siz);
 
+	newpath[siz - 1] = '\0';
+
 	return newpath;
 }
 
@@ -130,20 +132,17 @@ int Z_cfgfile(struct Z_server *server, char *cfgfile)
 		if (pval[vallen - 2] == '\r')
 			pval[vallen - 2] = '\0';
 
-		/* TODO: A bit of memory leak? */
 		if (strcmp(pkey, "server") == 0) {
-			if (!(server->server = strdup(pval)))
-				goto lineerror;
+			strncpy(server->server, pval, sizeof(server->server));
+			server->server[sizeof(server->server) - 1] = '\0';
 		} else if (strcmp(pkey, "user") == 0) {
-			if (!(server->user = strdup(pval)))
-				goto lineerror;
+			strncpy(server->user, pval, sizeof(server->user));
+			server->user[sizeof(server->user) - 1] = '\0';
 		} else if (strcmp(pkey, "password") == 0) {
-			if (!(server->password = strdup(pval)))
-				goto lineerror;
+			strncpy(server->password, pval, sizeof(server->password));
+			server->password[sizeof(server->password) - 1] = '\0';
 		} else if (strcmp(pkey, "joblog") == 0) {
-			exphomedir(filebuf, sizeof(filebuf), pval);
-			if (!(server->joblog = strdup(filebuf)))
-				goto lineerror;
+			exphomedir(server->joblog, sizeof(server->joblog), pval);
 		} else {
 			errno = EBADMSG;
 			goto lineerror;
@@ -259,16 +258,6 @@ int Z_get(struct Z_server *server, char *local, char *remote)
 	close(localfd);
 	close(sock);
 	return -1;
-}
-
-void Z_initserver(struct Z_server *server)
-{
-	memset(server, 0, sizeof(struct Z_server));
-	server->server = 0;
-	server->user = 0;
-	server->password = 0;
-	server->library = 0;
-	server->joblog = 0;
 }
 
 int Z_joblog(struct Z_server *server, char *outfile)

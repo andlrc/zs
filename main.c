@@ -208,8 +208,8 @@ int main(int argc, char **argv)
 	struct Z_server srcserver;
 	struct Z_server destserver;
 
-	Z_initserver(&srcserver);
-	Z_initserver(&destserver);
+	memset(&srcserver, 0, sizeof(struct Z_server));
+	memset(&destserver, 0, sizeof(struct Z_server));
 
 	while ((c = getopt_long(argc, argv, short_options, long_options,
 				NULL)) != -1) {
@@ -226,40 +226,49 @@ int main(int argc, char **argv)
 			return 0;
 		/* Source */
 		case 's':
-			srcserver.server = optarg;
+			strncpy(srcserver.server, optarg, sizeof(srcserver.server));
+			srcserver.server[sizeof(srcserver.server) - 1] = '\0';
 			break;
 		case 'u':
-			srcserver.user = optarg;
+			strncpy(srcserver.user, optarg, sizeof(srcserver.user));
+			srcserver.user[sizeof(srcserver.user) - 1] = '\0';
 			break;
 		case 'p':
-			srcserver.password = optarg;
+			strncpy(srcserver.password, optarg, sizeof(srcserver.password));
+			srcserver.password[sizeof(srcserver.password) - 1] = '\0';
 			break;
 		case 'c':
 			if (Z_cfgfile(&srcserver, optarg) == -1)
 				perror("Z_cfgfile");
 			break;
 		case 'j':
-			srcserver.joblog = optarg;
+			strncpy(srcserver.joblog, optarg, sizeof(srcserver.joblog));
+			srcserver.joblog[sizeof(srcserver.joblog) - 1] = '\0';
 			break;
 		/* Target */
 		case 'S':
-			destserver.server = optarg;
+			strncpy(destserver.server, optarg, sizeof(destserver.server));
+			destserver.server[sizeof(destserver.server) - 1] = '\0';
 			break;
 		case 'U':
-			destserver.user = optarg;
+			strncpy(destserver.user, optarg, sizeof(destserver.user));
+			destserver.user[sizeof(destserver.user) - 1] = '\0';
 			break;
 		case 'P':
-			destserver.password = optarg;
+			strncpy(destserver.password, optarg, sizeof(destserver.password));
+			destserver.password[sizeof(destserver.password) - 1] = '\0';
 			break;
 		case 'L':
-			destserver.library = optarg;
+			strncpy(destserver.library, optarg, sizeof(destserver.library));
+			destserver.library[sizeof(destserver.library) - 1] = '\0';
 			break;
 		case 'C':
 			if (Z_cfgfile(&destserver, optarg) == -1)
 				perror("Z_cfgfile");
 			break;
 		case 'J':
-			destserver.joblog = optarg;
+			strncpy(destserver.joblog, optarg, sizeof(destserver.joblog));
+			destserver.joblog[sizeof(destserver.joblog) - 1] = '\0';
 			break;
 		default:
 			print_usage();

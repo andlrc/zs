@@ -1,6 +1,7 @@
 #ifndef _H_ZS_
 #define _H_ZS_ 1
 
+#include <limits.h>
 #include <string.h>
 
 #define	Z_MAXOBJ	16
@@ -15,13 +16,13 @@ struct Z_object {
 struct Z_server {
 	int sock;
 	int verbose;
-	char *server;
-	char *user;
-	char *password;
+	char server[64];
+	char user[11];
+	char password[11];
 	struct Z_object objects[Z_MAXOBJ];	/* Source */
 	int objectlen;				/* Source */
-	char *library;				/* Target */
-	char *joblog;
+	char library[11];			/* Target */
+	char joblog[PATH_MAX];
 };
 
 enum Z_outputtype {
@@ -35,7 +36,6 @@ int Z_cfgfile(struct Z_server *server, char *cfgfile);
 int Z_cmd(struct Z_server *server, char *reqbuf);
 int Z_connect(struct Z_server *server);
 int Z_get(struct Z_server *server, char *local, char *remote);
-void Z_initserver(struct Z_server *server);
 int Z_joblog(struct Z_server *server, char *output);
 int Z_pasv(struct Z_server *server);
 int Z_printf(struct Z_server *server, enum Z_outputtype flags, char *msg, ...);
