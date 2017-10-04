@@ -22,7 +22,7 @@ README:	zs.1 readme.sed
 install:
 	cp zs /usr/bin/zs
 	cp zs.1 /usr/share/man/man1/zs.1
-	mkdir /etc/zs
+	mkdir -p /etc/zs
 	chmod 755 /etc/zs
 	cp default.conf /etc/zs/default.conf
 	chmod 600 /etc/zs/default.conf
