@@ -115,7 +115,7 @@ static int save(struct Z_server *server)
 		}
 	}
 
-	if (server->joblog && Z_joblog(server, server->joblog) == -1) {
+	if (*server->joblog != '\0' && Z_joblog(server, server->joblog) == -1) {
 		perror("Z_joblog()");
 		return 1;
 	}
@@ -125,7 +125,7 @@ static int save(struct Z_server *server)
 	return 0;
 
       error:
-	if (server->joblog && Z_joblog(server, server->joblog) == -1)
+	if (*server->joblog != '\0' && Z_joblog(server, server->joblog) == -1)
 		return 1;
 	return 1;
 
@@ -180,7 +180,7 @@ static int restore(struct Z_server *server, struct Z_server *srcserver)
 
 	}
 
-	if (server->joblog && Z_joblog(server, server->joblog) == -1) {
+	if (*server->joblog != '\0' && Z_joblog(server, server->joblog) == -1) {
 		perror("Z_joblog()");
 		return 1;
 	}
