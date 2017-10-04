@@ -17,7 +17,7 @@ debug: clean
 	$(MAKE) CFLAGS="-g"
 
 README:	zs.1 readme.sed
-	sed -f readme.sed $< | man -l - > $@
+	sed -f readme.sed $< | MANWIDTH=80 man -l - > $@
 
 install:
 	cp zs /usr/bin/zs
