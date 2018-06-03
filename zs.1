@@ -1,0 +1,144 @@
+.TH ZS 1
+.SH NAME
+ZS \- Copy objects from one AS/400 to another
+.SH SYNOPSIS
+.B zs
+[\fIOPTION\fR]... \fIOBJECT\fR...
+.SH DESCRIPTON
+zs copies objects from one AS/400 to another via FTP.
+.SH OPTIONS
+.PP
+Options like \fB-L\fR and \fB-c\fR can be specified multiple times each adding
+to the previous result set.
+.TP
+\fB\-s\fR \fIHOST\fR
+set source host
+.TP
+\fB\-u\fR \fIUSER\fR
+set source user
+.TP
+\fB\-p\fR \fIPORT\fR
+set source port
+.TP
+\fB\-l\fR \fILIBL\fR
+set source library list
+.IP
+a comma separated list of libraries to search for the specified objects if a
+library isn't explicitly provided with the object
+.IP
+can be specified multiple times, each adding to the complete list of libraries
+to search
+.TP
+\fB\-c\fR \fIFILE\fR
+a file following the schema defined in
+.B CONFIG FORMAT
+.IP
+can be specified multiple times
+.TP
+\fB\-S\fR \fIHOST\fR
+set target host
+.TP
+\fB\-U\fR \fIUSER\fR
+set target user
+.TP
+\fB\-P\fR \fIPORT\fR
+set target port
+.TP
+\fB\-L\fR \fILIB\fR
+set target library
+.IP
+this library is where all objects will be copied to
+.TP
+\fB\-v\fR
+level of verbosity
+.IP
+can be specified multiple times, each additional time provides more verbosity
+.TP
+\fB\-V\fR
+option version information and exit
+.TP
+\fB\-h\fR
+show help message and exit
+.SS "Exit status:"
+.TP
+0
+if OK,
+.TP
+1
+if any problem,
+.TP
+2
+if provided command-line arguments wrong.
+.SH OBJECTS
+At least one object needs specified.
+.PP
+An object takes the following form:
+.PP
+.RS
+\fILIBRARY\fR\fB/\fR\fIOBJECT\fR\fB*\fR\fITYPE\fR
+.RE
+.PP
+.RS 0
+.IP "-" 2
+.I LIBRARY
+is the library where the object recites, if omitted then the library list is
+searched
+.IP "-" 2
+.B /
+a literal slash delimiting the
+.I LIBRARY
+and the
+.I OBJECT
+.IP "-" 2
+.I OBJECT
+is the object, should always be specified
+.IP "-" 2
+.B *
+a literal asterisk delimiting the
+.I OBJECT
+and the
+.I TYPE
+.IP "-" 2
+.I TYPE
+is the object type to copy, if omitted the all types are copied, this is the
+same as typing
+.B ALL
+.PP
+Consult your local system administrator for a full list of supported types.
+.RE
+.SH EXAMPLES
+.PP
+The following example will copy
+.PP
+.RS 0
+.IP "-" 2
+.I obj1
+from either
+.IR lib1 ,
+.IR lib2 ,
+or
+.IR lib3 ,
+.IP "-" 2
+.I obj2
+from
+.IR lib4 
+.IP "-" 2
+and finally the program named
+.I obj3
+will be copied from either
+.IR lib1 ,
+.IR lib2 ,
+or
+.IR lib3 .
+.RE
+.PP
+.RS
+.B zs
+.B -l
+.I lib1,lib2,lib3
+.I obj1
+.I lib4/obj2
+.I obj3*PGM
+.RE
+.SH SEE ALSO
+.BR ftp (1)
