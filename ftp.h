@@ -12,6 +12,7 @@ enum ftp_errors {
 	EFTP_NOREPLY,
 	EFTP_CONTREPLY,
 	EFTP_NOTLOGGEDIN,
+	EFTP_WOULDBLOCK,
 
 	/* system errors */
 	EFTP_SYSTEM = 99,

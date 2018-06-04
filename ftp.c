@@ -18,7 +18,8 @@ static const char *ftp_error_messages[] = {
 	"bad response from server",
 	"no reply from server",
 	"multi line reply from server",
-	"not logged in"
+	"not logged in",
+	"reading from socket would block"
 };
 
 static void verbose(struct ftp *ftp, int verbosity, char *format, ...)
@@ -252,7 +253,6 @@ int ftp_cmdcontinue_r(struct ftp *ftp, struct ftpansbuf *ansbuf)
 			}
 			return ansbuf->reply;
 		}
-		ftp->errnum = EFTP_NOREPLY;
 		return 0;
 	}
 
@@ -307,17 +307,27 @@ int ftp_recvans(struct ftp *ftp, struct ftpansbuf *ansbuf)
 	int rc;
 
        	recvlen = ftp_recvline(ftp, buf, sizeof(buf));
-	if (recvlen < 3)
+	if (recvlen <= 0)
 		return -1;
+	if (recvlen < 4) {
+		ftp->errnum = EFTP_UNKWNRPLY;
+	}
+	/* assume that ftpansbuf.buffer is of size BUFSIZ */
 
 	rc = sscanf(buf, "%d", &ansbuf->reply);
 	if (rc == 0 || rc == EOF) {
 		ftp->errnum = EFTP_BADRES;
 		return -1;
 	}
+	/*
+	 * buf = NNNIMMM
+	 * NNN = reply status
+	 * I   = inditator, "-" for more lines, and " " (space) for single line
+	 * MMM = message
+	 */
 	ansbuf->continues = (buf[3] == '-');
-	memcpy(ansbuf->buffer, buf + 4, sizeof(buf) - 4);
-	ansbuf->buffer[sizeof(buf) - 5] = '\0';
+	memcpy(ansbuf->buffer, buf + 4, recvlen - 4);
+	ansbuf->buffer[recvlen - 4 + 1] = '\0';
 
 	return 0;
 }
@@ -345,6 +355,7 @@ ssize_t ftp_recvline(struct ftp *ftp, char *resbuf, size_t ressiz)
 		if (recvlen == -1) {
 			/* no line ready just yet */
 			if (errno == EWOULDBLOCK) {
+				ftp->errnum = EFTP_WOULDBLOCK;
 				return 0;
 			} else {
 				ftp->errnum = EFTP_SYSTEM;
