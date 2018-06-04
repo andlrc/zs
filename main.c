@@ -5,7 +5,6 @@
 #include <sys/wait.h>
 #include <limits.h>
 #include <stdarg.h>
-#include <ctype.h>
 #include <errno.h>
 #include <getopt.h>
 
@@ -13,6 +12,7 @@ char *program_name;
 #define PROGRAM_VERSION	"1.0"
 
 #include "zs.h"
+#include "util.h"
 #include "ftp.h"
 
 static void print_version(void)
@@ -59,136 +59,6 @@ static void print_error(char *format, ...)
 	va_end(ap);
 
 	fputs(buf, stderr);
-}
-
-static int parsecfg(struct serveropt *server, char *filename)
-{
-	/* ($option <sp> $value <nl>)* */
-	FILE *fp;
-	char *line, *pline;
-	char *key;
-	size_t linesiz;
-	char filenamebuf[BUFSIZ];
-	int errorcnt;
-
-	line = NULL;
-	linesiz = 0;
-
-	/* use /etc/zs/$FILE.conf instead */
-	if (!strchr(filename, '/') && !strchr(filename, '.')) {
-		snprintf(filenamebuf, sizeof(filenamebuf), "/etc/zs/%s.conf", filename);
-		filename = filenamebuf;
-	}
-
-	fp = fopen(filename, "r");
-	if (fp == NULL) {
-		print_error("failed to open config file: %s: %s\n", filename, strerror(errno));
-		return -1;
-	}
-
-	errorcnt = 0;
-	while(getline(&line, &linesiz, fp) > 0) {
-		pline = line;
-
-		while (isspace(*pline))
-			pline++;
-
-		if (*pline == '#' || *pline == ';' || *pline == '\0')
-			continue;
-
-		key = strsep(&pline, " \t");
-		if (*pline == '\0') {
-			print_error("missing value for key: %s\n", key);
-			errorcnt++;
-			continue;
-		}
-
-		while (isspace(*pline))
-			pline++;
-
-		*(strchr(pline, '\n')) = '\0';
-
-		if (strcmp(key, "server") == 0 || strcmp(key, "host") == 0) {
-			strncpy(server->host, pline, Z_HSTSIZ);
-			server->host[Z_HSTSIZ - 1] = '\0';
-		} else if (strcmp(key, "user") == 0) {
-			strncpy(server->user, pline, Z_USRSIZ);
-			server->user[Z_USRSIZ - 1] = '\0';
-		} else if (strcmp(key, "password") == 0) {
-			strncpy(server->password, pline, Z_PWDSIZ);
-			server->password[Z_PWDSIZ - 1] = '\0';
-		} else {
-			print_error("unknown config option: %s\n", key);
-			errorcnt++;
-			continue;
-		}
-	}
-
-	free(line);
-	fclose(fp);
-	return errorcnt;
-}
-
-static int parselibl(struct sourceopt *sourceopt, char *optlibl)
-{
-	/* "lib1,lib2,...,libN" */
-	char *saveptr, *p;
-	int i = 0;
-	int errorcnt;
-
-	p = strtok_r(optlibl, ",", &saveptr);
-	errorcnt = 0;
-	do {
-		if (i == Z_LIBLMAX) {
-			print_error("maximum of %d libraries reached\n", Z_LIBLMAX);
-			errorcnt++;
-			continue;
-		}
-
-		strncpy(sourceopt->libl[i], p, Z_LIBSIZ);
-		sourceopt->libl[i][Z_LIBSIZ - 1] = '\0';
-		i++;
-	} while ((p = strtok_r(NULL, ",", &saveptr)) != NULL);
-
-	return errorcnt;
-}
-
-static int parseobj(struct object *obj, char *optobj)
-{
-	/*
-	 * obj   = ( $libl "/" )? $obj ( "*" $type )?
-	 * $libl = \w{1,10}
-	 * $obj  = \w{1,10}
-	 * $type = \w{1,10}
-	 * If $type is missing then "ALL" is used
-	 */
-	char *saveptr, *p;
-
-	/* $libl */
-	if (strchr(optobj, '/')) {
-		p = strtok_r(optobj, "/", &saveptr);
-		strncpy(obj->lib, p, Z_LIBSIZ);
-		obj->lib[Z_LIBSIZ - 1] = '\0';
-
-		p = strtok_r(NULL, "*", &saveptr);
-	} else {
-		p = strtok_r(optobj, "*", &saveptr);
-	}
-
-	/* $obj */
-	strncpy(obj->obj, p, Z_OBJSIZ);
-	obj->obj[Z_OBJSIZ - 1] = '\0';
-
-	/* $type */
-	p = strtok_r(NULL, ".", &saveptr);
-	if (p != NULL) {
-		strncpy(obj->type, p, Z_TYPSIZ);
-		obj->type[Z_TYPSIZ - 1] = '\0';
-	} else {
-		strcpy(obj->type, "ALL");
-	}
-
-	return 0;
 }
 
 static int sourcemain(struct sourceopt *sourceopt, struct ftp *ftp)
@@ -477,10 +347,14 @@ int main(int argc, char **argv)
 			sourceopt.server.port = atoi(optarg);
 			break;
 		case 'l':
-			parselibl(&sourceopt, optarg);
+			rc = util_parselibl(&sourceopt, optarg);
+			if (rc != 0)
+				print_error("failed to parse library list: %s\n", util_strerror(rc));
 			break;
 		case 'c':
-			parsecfg(&sourceopt.server, optarg);
+			rc = util_parsecfg(&sourceopt.server, optarg);
+			if (rc != 0)
+				print_error("failed to parse config file: %s\n", util_strerror(rc));
 			break;
 		case 'S':
 			strncpy(targetopt.server.host, optarg, Z_HSTSIZ);
@@ -498,7 +372,9 @@ int main(int argc, char **argv)
 			targetopt.lib[Z_LIBSIZ - 1] = '\0';
 			break;
 		case 'C':
-			parsecfg(&targetopt.server, optarg);
+			rc = util_parsecfg(&targetopt.server, optarg);
+			if (rc != 0)
+				print_error("failed to parse config file: %s\n", util_strerror(rc));
 			break;
 		default:
 			return 2;
@@ -533,7 +409,9 @@ int main(int argc, char **argv)
 
 	/* slurp objects */
 	for (int i = optind, y = 0; i < argc; i++) {
-		parseobj(&sourceopt.objects[y++], argv[i]);
+		rc = util_parseobj(&sourceopt.objects[y++], argv[i]);
+		if (rc != 0)
+			print_error("failed to parse object: %s\n", util_strerror(rc));
 		if (y == Z_OBJMAX) {
 			print_error("maximum of %d objects reached\n", Z_OBJMAX);
 		}
