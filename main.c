@@ -102,11 +102,28 @@ static int sourcemain(struct sourceopt *sourceopt, struct ftp *ftp)
 			}
 		}
 
-		if (*obj->lib) {
-			lib = obj->lib;
+		for (int y = 0; y < Z_LIBLMAX; y++) {
+			if (*obj->lib) {
+				/* object have own library */
+				lib = obj->lib;
+				/* failed in first iteration */
+				if (y > 0) {
+					print_error("object %s not found in library %s\n", obj->obj, obj->lib);
+					return 1;
+				}
+			} else {
+				/* use library list */
+				lib = sourceopt->libl[y];
+				/* no more libraries on the list to copy the
+				 * object from */
+				if (*lib == '\0') {
+					print_error("object %s not found in library list\n", obj->obj);
+					return 1;
+				}
+			}
 			rc = ftp_cmd(ftp, "RCMD SAVOBJ OBJ(%s) OBJTYPE(*%s) LIB(%s) DEV(*SAVF) SAVF(QTEMP/ZS%d) DTACPR(*HIGH)\r\n",
-				     obj->obj, obj->type, obj->lib, i);
-			while (rc != 250) {
+				     obj->obj, obj->type, lib, i);
+			while (rc != 250 && rc != 550) {
 				switch (rc) {
 				case 0:
 					rc = ftp_cmdcontinue(ftp);
@@ -124,39 +141,9 @@ static int sourcemain(struct sourceopt *sourceopt, struct ftp *ftp)
 					return 1;
 				}
 			}
-		} else {
-			for (int y = 0; y < Z_LIBLMAX; y++) {
-				lib = sourceopt->libl[y];
-				/* no more libraries on the list to copy the
-				 * object from */
-				if (*lib == '\0') {
-					print_error("object %s not found in library list\n", obj->obj);
-					return 1;
-				}
-				rc = ftp_cmd(ftp, "RCMD SAVOBJ OBJ(%s) OBJTYPE(*%s) LIB(%s) DEV(*SAVF) SAVF(QTEMP/ZS%d) DTACPR(*HIGH)\r\n",
-					     obj->obj, obj->type, lib, i);
-				while (rc != 250 && rc != 550) {
-					switch (rc) {
-					case 0:
-						rc = ftp_cmdcontinue(ftp);
-						break;
-					case -1:
-						if (ftp->errnum == EFTP_NOREPLY) {
-							rc = ftp_cmdcontinue(ftp);
-						} else {
-							print_error("failed to save object: %s\n", ftp_strerror(ftp));
-							return 1;
-						}
-						break;
-					default:
-						print_error("unknown reply code: %d\n", rc);
-						return 1;
-					}
-				}
-				/* object was copied */
-				if (rc == 250)
-					break;
-			}
+			/* object was copied */
+			if (rc == 250)
+				break;
 		}
 
 		snprintf(remotename, sizeof(remotename), "/tmp/zs%d.savf", i);
