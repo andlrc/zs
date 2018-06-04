@@ -22,7 +22,8 @@ static const char *ftp_error_messages[] = {
 	"reading from socket would block"
 };
 
-static void verbose(struct ftp *ftp, int verbosity, char *format, ...)
+static void print_debug(struct ftp *ftp, enum ftp_verbosity verbosity,
+			char *format, ...)
 {
 	int len;
 	char buf[BUFSIZ];
@@ -266,16 +267,16 @@ ssize_t ftp_write(struct ftp *ftp, void *buf, size_t count)
 	rc = write(ftp->sock, buf, count);
 	switch (rc) {
 	case 0:
-		verbose(ftp, 2, "::WRITE: [NOTHING]\n");
+		print_debug(ftp, FTP_VERBOSE_MORE, "::WRITE: [NOTHING]");
 		break;
 	case -1:
-		verbose(ftp, 2, "::WRITE: %s\n", strerror(errno));
+		print_debug(ftp, FTP_VERBOSE_MORE, "::WRITE: %s", strerror(errno));
 		break;
 	default:
 		if (strncmp(buf, "PASS ", 5) == 0) {
-			verbose(ftp, 1, "WRITE: PASS ******\r\n");
+			print_debug(ftp, FTP_VERBOSE_SOME, "WRITE: PASS ******");
 		} else {
-			verbose(ftp, 1, "WRITE: %*s", (int)rc, (char *)buf);
+			print_debug(ftp, FTP_VERBOSE_SOME, "WRITE: %*s", (int)rc, (char *)buf);
 		}
 	}
 
@@ -288,13 +289,13 @@ ssize_t ftp_recv(struct ftp *ftp, void *buf, size_t len, int flags)
 	rc = recv(ftp->sock, buf, len, flags);
 	switch (rc) {
 	case 0:
-		verbose(ftp, 2, "::RECV: [NOTHING]\n");
+		print_debug(ftp, FTP_VERBOSE_MORE, "::RECV: [NOTHING]");
 		break;
 	case -1:
-		verbose(ftp, 2, "::RECV: [%s]\n", strerror(errno));
+		print_debug(ftp, FTP_VERBOSE_MORE, "::RECV: [%s]", strerror(errno));
 		break;
 	default:
-		verbose(ftp, 2, "RECV: <%*s>\n", (int)rc, (char *)buf);
+		print_debug(ftp, FTP_VERBOSE_MORE, "RECV: <%*s>", (int)rc, (char *)buf);
 	}
 
 	return rc;
@@ -398,7 +399,7 @@ ssize_t ftp_recvline(struct ftp *ftp, char *resbuf, size_t ressiz)
 		ftp->recvline.end = ftp->recvline.buffer + (ftp->recvline.end - (pbufnl + 2));
 	}
 
-	verbose(ftp, 1, "RECVLINE: %s", resbuf);
+	print_debug(ftp, FTP_VERBOSE_SOME, "RECVLINE: %s", resbuf);
 	return nloffset + 1;
 }
 

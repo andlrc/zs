@@ -29,9 +29,14 @@ enum ftp_errors {
 	EFTP_GAI_OVERFLOW
 };
 
+enum ftp_verbosity {
+	FTP_VERBOSE_SOME = 1,
+	FTP_VERBOSE_MORE = 2
+};
+
 struct ftp {
 	enum ftp_errors errnum;
-	int verbosity;
+	enum ftp_verbosity verbosity;
 	int sock;
 	struct {
 		int tries;
