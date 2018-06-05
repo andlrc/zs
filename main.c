@@ -316,12 +316,14 @@ int main(int argc, char **argv)
 		case 'l':
 			rc = util_parselibl(&sourceopt, optarg);
 			if (rc != 0)
-				print_error("failed to parse library list: %s\n", util_strerror(rc));
+				print_error("failed to parse library list: %s\n",
+					    util_strerror(rc));
 			break;
 		case 'c':
 			rc = util_parsecfg(&sourceftp, optarg);
 			if (rc != 0)
-				print_error("failed to parse config file: %s\n", util_strerror(rc));
+				print_error("failed to parse config file: %s\n",
+					    util_strerror(rc));
 			break;
 		case 'S':
 			ftp_set_variable(&targetftp, FTP_VAR_HOST, optarg);
@@ -339,7 +341,8 @@ int main(int argc, char **argv)
 		case 'C':
 			rc = util_parsecfg(&targetftp, optarg);
 			if (rc != 0)
-				print_error("failed to parse config file: %s\n", util_strerror(rc));
+				print_error("failed to parse config file: %s\n",
+					    util_strerror(rc));
 			break;
 		default:
 			return 2;
@@ -350,9 +353,11 @@ int main(int argc, char **argv)
 	for (int i = optind, y = 0; i < argc; i++) {
 		rc = util_parseobj(&sourceopt.objects[y++], argv[i]);
 		if (rc != 0)
-			print_error("failed to parse object: %s\n", util_strerror(rc));
+			print_error("failed to parse object: %s\n",
+				    util_strerror(rc));
 		if (y == Z_OBJMAX) {
-			print_error("maximum of %d objects reached\n", Z_OBJMAX);
+			print_error("maximum of %d objects reached\n",
+				    Z_OBJMAX);
 		}
 	}
 

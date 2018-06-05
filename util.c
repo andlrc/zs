@@ -28,7 +28,8 @@ int util_parsecfg(struct ftp *ftp, char *filename)
 
 	/* use /etc/zs/$FILE.conf instead */
 	if (!strchr(filename, '/') && !strchr(filename, '.')) {
-		snprintf(filenamebuf, sizeof(filenamebuf), "/etc/zs/%s.conf", filename);
+		snprintf(filenamebuf, sizeof(filenamebuf), "/etc/zs/%s.conf",
+			 filename);
 		filename = filenamebuf;
 	}
 

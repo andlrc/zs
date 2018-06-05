@@ -285,13 +285,16 @@ ssize_t ftp_write(struct ftp *ftp, void *buf, size_t count)
 		print_debug(ftp, FTP_VERBOSE_MORE, "::WRITE: [NOTHING]");
 		break;
 	case -1:
-		print_debug(ftp, FTP_VERBOSE_MORE, "::WRITE: %s", strerror(errno));
+		print_debug(ftp, FTP_VERBOSE_MORE, "::WRITE: %s",
+			    strerror(errno));
 		break;
 	default:
 		if (strncmp(buf, "PASS ", 5) == 0) {
-			print_debug(ftp, FTP_VERBOSE_SOME, "WRITE: PASS ******\n");
+			print_debug(ftp, FTP_VERBOSE_SOME,
+				    "WRITE: PASS ******\n");
 		} else {
-			print_debug(ftp, FTP_VERBOSE_SOME, "WRITE: %*s", (int)rc, (char *)buf);
+			print_debug(ftp, FTP_VERBOSE_SOME, "WRITE: %*s",
+				    (int)rc, (char *)buf);
 		}
 	}
 
@@ -307,10 +310,12 @@ ssize_t ftp_recv(struct ftp *ftp, void *buf, size_t len, int flags)
 		print_debug(ftp, FTP_VERBOSE_MORE, "::RECV: [NOTHING]");
 		break;
 	case -1:
-		print_debug(ftp, FTP_VERBOSE_MORE, "::RECV: [%s]", strerror(errno));
+		print_debug(ftp, FTP_VERBOSE_MORE, "::RECV: [%s]",
+			    strerror(errno));
 		break;
 	default:
-		print_debug(ftp, FTP_VERBOSE_MORE, "RECV: <%*s>", (int)rc, (char *)buf);
+		print_debug(ftp, FTP_VERBOSE_MORE, "RECV: <%*s>",
+			    (int)rc, (char *)buf);
 	}
 
 	return rc;
@@ -424,7 +429,7 @@ int ftp_put(struct ftp *ftp, char *localname, char *remotename)
 	struct ftpansbuf ftpans;
 	int h1, h2, h3, h4, p1, p2;
 	int pasvfd, localfd;
-	struct sockaddr_in pasvaddr;
+	struct sockaddr_in addr;
 	char buf[BUFSIZ];
 	char resbuf[BUFSIZ];
 	ssize_t reslen;
@@ -446,11 +451,11 @@ int ftp_put(struct ftp *ftp, char *localname, char *remotename)
 		return -1;
 	}
 
-	pasvaddr.sin_family = AF_INET;
-	pasvaddr.sin_addr.s_addr = (h4 << 24) + (h3 << 16) + (h2 << 8) + h1;
-	pasvaddr.sin_port = htons(p1 * 256 + p2);
+	addr.sin_family = AF_INET;
+	addr.sin_addr.s_addr = (h4 << 24) + (h3 << 16) + (h2 << 8) + h1;
+	addr.sin_port = htons(p1 * 256 + p2);
 
-	if (connect(pasvfd, (struct sockaddr *)&pasvaddr, sizeof(pasvaddr)) == -1) {
+	if (connect(pasvfd, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
 		ftp->errnum = EFTP_SYSTEM;
 		return -1;
 	}
@@ -503,7 +508,7 @@ int ftp_get(struct ftp *ftp, char *localname, char *remotename)
 	struct ftpansbuf ftpans;
 	int h1, h2, h3, h4, p1, p2;
 	int pasvfd, localfd;
-	struct sockaddr_in pasvaddr;
+	struct sockaddr_in addr;
 	char buf[BUFSIZ];
 	char resbuf[BUFSIZ];
 	ssize_t reslen;
@@ -525,11 +530,11 @@ int ftp_get(struct ftp *ftp, char *localname, char *remotename)
 		return -1;
 	}
 
-	pasvaddr.sin_family = AF_INET;
-	pasvaddr.sin_addr.s_addr = (h4 << 24) + (h3 << 16) + (h2 << 8) + h1;
-	pasvaddr.sin_port = htons(p1 * 256 + p2);
+	addr.sin_family = AF_INET;
+	addr.sin_addr.s_addr = (h4 << 24) + (h3 << 16) + (h2 << 8) + h1;
+	addr.sin_port = htons(p1 * 256 + p2);
 
-	if (connect(pasvfd, (struct sockaddr *)&pasvaddr, sizeof(pasvaddr)) == -1) {
+	if (connect(pasvfd, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
 		ftp->errnum = EFTP_SYSTEM;
 		return -1;
 	}
