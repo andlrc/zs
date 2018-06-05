@@ -11,9 +11,9 @@
 char *program_name;
 #define PROGRAM_VERSION	"1.0"
 
+#include "ftp.h"
 #include "zs.h"
 #include "util.h"
-#include "ftp.h"
 
 static void print_version(void)
 {
@@ -72,7 +72,7 @@ static int sourcemain(struct sourceopt *sourceopt, struct ftp *ftp)
 	char buf[BUFSIZ];
 	int len;
 
-	if (ftp_connect(ftp, sourceopt->server.host, sourceopt->server.port, sourceopt->server.user, sourceopt->server.password) == -1) {
+	if (ftp_connect(ftp, &sourceopt->server) == -1) {
 		print_error("failed to connect to source: %s\n", ftp_strerror(ftp));
 		return 1;
 	}
@@ -84,7 +84,8 @@ static int sourcemain(struct sourceopt *sourceopt, struct ftp *ftp)
 
 		rc = ftp_cmd(ftp, "RCMD CRTSAVF FILE(QTEMP/ZS%d)\r\n", i);
 		if (ftp_dfthandle(ftp, rc, 250) == -1) {
-			print_error("failed to create save file: %s\n", ftp_strerror(ftp));
+			print_error("failed to create save file: %s\n",
+				    ftp_strerror(ftp));
 			return 1;
 		}
 
@@ -136,7 +137,8 @@ static int sourcemain(struct sourceopt *sourceopt, struct ftp *ftp)
 		rc = ftp_cmd(ftp, "RCMD CPYTOSTMF FROMMBR('/QSYS.LIB/QTEMP.LIB/ZS%d.FILE') TOSTMF('%s') STMFOPT(*REPLACE)\r\n",
 			     i, remotename);
 		if (ftp_dfthandle(ftp, rc, 250) == -1) {
-			print_error("failed to copy to stream file: %s\n", ftp_strerror(ftp));
+			print_error("failed to copy to stream file: %s\n",
+				    ftp_strerror(ftp));
 			return 1;
 		}
 
@@ -176,7 +178,7 @@ static int targetmain(struct targetopt *targetopt, struct ftp *ftp)
 	size_t linesiz;
 	int rc;
 
-	if (ftp_connect(ftp, targetopt->server.host, targetopt->server.port, targetopt->server.user, targetopt->server.password) == -1) {
+	if (ftp_connect(ftp, &targetopt->server) == -1) {
 		print_error("failed to connect to target: %s\n", ftp_strerror(ftp));
 		return 1;
 	}
@@ -212,14 +214,16 @@ static int targetmain(struct targetopt *targetopt, struct ftp *ftp)
 		rc = ftp_cmd(ftp, "RCMD CPYFRMSTMF FROMSTMF('%s') TOMBR('/QSYS.LIB/QTEMP.LIB/ZS%d.FILE')\r\n",
 			     remotename, i);
 		if (ftp_dfthandle(ftp, rc, 250) == -1) {
-			print_error("failed to copy from stream file: %s\n", ftp_strerror(ftp));
+			print_error("failed to copy from stream file: %s\n",
+				    ftp_strerror(ftp));
 			return 1;
 		}
 
 		rc = ftp_cmd(ftp, "RCMD RSTOBJ OBJ(*ALL) SAVLIB(%s) DEV(*SAVF) SAVF(QTEMP/ZS%d) MBROPT(*ALL) RSTLIB(%s)\r\n",
 			     lib, i, targetopt->lib);
 		if (ftp_dfthandle(ftp, rc, 250) == -1) {
-			print_error("failed to restore object: %s\n", ftp_strerror(ftp));
+			print_error("failed to restore object: %s\n",
+				    ftp_strerror(ftp));
 			return 1;
 		}
 
@@ -267,12 +271,12 @@ int main(int argc, char **argv)
 			targetftp.verbosity++;
 			break;
 		case 's':
-			strncpy(sourceopt.server.host, optarg, Z_HSTSIZ);
-			sourceopt.server.host[Z_HSTSIZ - 1] = '\0';
+			strncpy(sourceopt.server.host, optarg, FTP_HSTSIZ);
+			sourceopt.server.host[FTP_HSTSIZ - 1] = '\0';
 			break;
 		case 'u':
-			strncpy(sourceopt.server.user, optarg, Z_USRSIZ);
-			sourceopt.server.user[Z_USRSIZ - 1] = '\0';
+			strncpy(sourceopt.server.user, optarg, FTP_USRSIZ);
+			sourceopt.server.user[FTP_USRSIZ - 1] = '\0';
 			break;
 		case 'p':
 			sourceopt.server.port = atoi(optarg);
@@ -288,12 +292,12 @@ int main(int argc, char **argv)
 				print_error("failed to parse config file: %s\n", util_strerror(rc));
 			break;
 		case 'S':
-			strncpy(targetopt.server.host, optarg, Z_HSTSIZ);
-			targetopt.server.host[Z_HSTSIZ - 1] = '\0';
+			strncpy(targetopt.server.host, optarg, FTP_HSTSIZ);
+			targetopt.server.host[FTP_HSTSIZ - 1] = '\0';
 			break;
 		case 'U':
-			strncpy(targetopt.server.user, optarg, Z_USRSIZ);
-			targetopt.server.user[Z_USRSIZ - 1] = '\0';
+			strncpy(targetopt.server.user, optarg, FTP_USRSIZ);
+			targetopt.server.user[FTP_USRSIZ - 1] = '\0';
 			break;
 		case 'P':
 			targetopt.server.port = atoi(optarg);

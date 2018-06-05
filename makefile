@@ -7,9 +7,9 @@ all:	zs
 zs:	$(OFILES)
 	$(CC) $(CFLAGS) -o $@ $^
 
-main.o:	zs.h util.h ftp.h main.c
-util.o:	zs.h util.h util.c
 ftp.o:	ftp.h ftp.c
+main.o:	ftp.h zs.h util.h main.c
+util.o:	ftp.h zs.h util.h util.c
 
 clean:
 	-rm $(OFILES)

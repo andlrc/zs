@@ -48,6 +48,18 @@ struct ftp {
 	} recvline;
 };
 
+#define FTP_HSTSIZ	256
+#define FTP_USRSIZ	128
+#define FTP_PWDSIZ	128
+
+struct ftpserver {
+	char host[FTP_HSTSIZ];
+	int port;
+	char user[FTP_USRSIZ];
+	char password[FTP_PWDSIZ];
+};
+
+
 struct ftpansbuf {
 	int reply;
 	int continues; /* boolean */
@@ -55,7 +67,7 @@ struct ftpansbuf {
 };
 
 void ftp_init(struct ftp *);
-int ftp_connect(struct ftp *, char *, int, char *, char *);
+int ftp_connect(struct ftp *, struct ftpserver *);
 void ftp_close(struct ftp *);
 ssize_t ftp_recvline(struct ftp *, char *, size_t);
 int ftp_recvans(struct ftp *, struct ftpansbuf *);

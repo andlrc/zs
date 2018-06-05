@@ -56,14 +56,13 @@ void ftp_close(struct ftp *ftp)
 	ftp->recvline.buffer = NULL;
 }
 
-int ftp_connect(struct ftp *ftp, char *host, int port, char *username,
-		char *password)
+int ftp_connect(struct ftp *ftp, struct ftpserver *server)
 {
 	struct addrinfo hints, *res, *ressave;
 	int rc;
 	char sport[6];
 
-	snprintf(sport, sizeof(sport), "%d", port);
+	snprintf(sport, sizeof(sport), "%d", server->port);
 
 	memset(&hints, 0, sizeof(struct addrinfo));
 
@@ -71,7 +70,7 @@ int ftp_connect(struct ftp *ftp, char *host, int port, char *username,
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_flags = AI_NUMERICSERV;
 
-	switch (getaddrinfo(host, sport, &hints, &res)) {
+	switch (getaddrinfo(server->host, sport, &hints, &res)) {
 	case EAI_SYSTEM:
 		ftp->errnum = EFTP_SYSTEM;
 		return -1;
@@ -134,12 +133,12 @@ int ftp_connect(struct ftp *ftp, char *host, int port, char *username,
 	/* TODO: try to figure out a proper AUTH */
 
 	/* login */
-	if (username && *username) {
-		rc = ftp_cmd(ftp, "USER %s\r\n", username);
+	if (*server->user) {
+		rc = ftp_cmd(ftp, "USER %s\r\n", server->user);
 		if (ftp_dfthandle(ftp, rc, 331) == -1)
 			return -1;
 
-		rc = ftp_cmd(ftp, "PASS %s\r\n", password);
+		rc = ftp_cmd(ftp, "PASS %s\r\n", server->password);
 		if (ftp_dfthandle(ftp, rc, 230) == -1)
 			return -1;
 	}
