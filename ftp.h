@@ -64,6 +64,8 @@ int ftp_cmd(struct ftp *, char *, ...);
 int ftp_cmdcontinue(struct ftp *);
 int ftp_cmd_r(struct ftp *, struct ftpansbuf *, char *, ...);
 int ftp_cmdcontinue_r(struct ftp *, struct ftpansbuf *);
+int ftp_dfthandle(struct ftp *, int, int);
+int ftp_dfthandle_r(struct ftp *, struct ftpansbuf *, int, int);
 int ftp_put(struct ftp *ftp, char *, char *);
 int ftp_get(struct ftp *ftp, char *, char *);
 ssize_t ftp_write(struct ftp *, void *, size_t);

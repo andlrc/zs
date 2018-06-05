@@ -128,73 +128,26 @@ int ftp_connect(struct ftp *ftp, char *host, int port, char *username,
 	/* read welcome message */
 	ftp->cmd.tries = 0;
 	rc = ftp_cmdcontinue(ftp);
-	while (rc != 220) {
-		switch (rc) {
-		case 0:
-			rc = ftp_cmdcontinue(ftp);
-			break;
-		case -1:
-			return -1;
-		default:
-			ftp->errnum = EFTP_UNKWNRPLY;
-			return -1;
-		}
-	}
+	if (ftp_dfthandle(ftp, rc, 220) == -1)
+		return -1;
 
 	/* TODO: try to figure out a proper AUTH */
 
 	/* login */
 	if (username && *username) {
 		rc = ftp_cmd(ftp, "USER %s\r\n", username);
-		while (rc != 331) {
-			switch (rc) {
-			case 0:
-				rc = ftp_cmdcontinue(ftp);
-				break;
-			case -1:
-				return -1;
-			default:
-				ftp->errnum = EFTP_UNKWNRPLY;
-				return -1;
-			}
-		}
+		if (ftp_dfthandle(ftp, rc, 331) == -1)
+			return -1;
 
 		rc = ftp_cmd(ftp, "PASS %s\r\n", password);
-		while (rc != 230) {
-			switch (rc) {
-			case 0:
-				rc = ftp_cmdcontinue(ftp);
-				break;
-			case -1:
-				return -1;
-			case 530:
-				ftp->errnum = EFTP_NOTLOGGEDIN;
-				return -1;
-			default:
-				ftp->errnum = EFTP_UNKWNRPLY;
-				return -1;
-			}
-		}
+		if (ftp_dfthandle(ftp, rc, 230) == -1)
+			return -1;
 	}
 
 	/* binary mode */
 	rc = ftp_cmd(ftp, "type I\r\n");
-	while (rc != 200) {
-		switch (rc) {
-		case 0:
-			rc = ftp_cmdcontinue(ftp);
-			break;
-		case -1:
-			if (ftp->errnum == EFTP_NOREPLY) {
-				rc = ftp_cmdcontinue(ftp);
-			} else {
-				return 1; /* FIXME */
-			}
-			break;
-		default:
-			return 1; /* FIXME */
-		}
-	}
+	if (ftp_dfthandle(ftp, rc, 200) == -1)
+		return -1;
 
 	return 0;
 }
@@ -259,6 +212,33 @@ int ftp_cmdcontinue_r(struct ftp *ftp, struct ftpansbuf *ansbuf)
 
 	ftp->errnum = EFTP_TIMEOUT;
 	return -1;
+}
+
+int ftp_dfthandle(struct ftp *ftp, int rc, int reply)
+{
+	struct ftpansbuf ftpans;
+	return ftp_dfthandle_r(ftp, &ftpans, rc, reply);
+}
+
+int ftp_dfthandle_r(struct ftp *ftp, struct ftpansbuf *ftpans,
+		    int rc, int reply)
+{
+	while (rc != reply) {
+		switch (rc) {
+		case 0:
+			rc = ftp_cmdcontinue_r(ftp, ftpans);
+			break;
+		case -1:
+			return -1;
+		case 530:
+			ftp->errnum = EFTP_NOTLOGGEDIN;
+			return -1;
+		default:
+			ftp->errnum = EFTP_UNKWNRPLY;
+			return -1;
+		}
+	}
+	return 0;
 }
 
 ssize_t ftp_write(struct ftp *ftp, void *buf, size_t count)
@@ -415,18 +395,8 @@ int ftp_put(struct ftp *ftp, char *localname, char *remotename)
 	ssize_t reslen;
 
 	rc = ftp_cmd_r(ftp, &ftpans, "PASV\r\n");
-	while (rc != 227) {
-		switch (rc) {
-		case 0:
-			rc = ftp_cmdcontinue_r(ftp, &ftpans);
-			break;
-		case -1:
-			return -1;
-		default:
-			ftp->errnum = EFTP_UNKWNRPLY;
-			return -1;
-		}
-	}
+	if (ftp_dfthandle_r(ftp, &ftpans, rc, 227) == -1)
+		return -1;
 
 	if (sscanf(ftpans.buffer,
 		   "Entering Passive Mode (%d,%d,%d,%d,%d,%d).",
@@ -474,6 +444,7 @@ int ftp_put(struct ftp *ftp, char *localname, char *remotename)
 	close(localfd);
 	close(pasvfd);
 
+	/* read STOR reply */
 	ftp->cmd.tries = 0;
 	rc = ftp_cmdcontinue(ftp);
 	while (rc != 226) {
@@ -505,18 +476,8 @@ int ftp_get(struct ftp *ftp, char *localname, char *remotename)
 	ssize_t reslen;
 
 	rc = ftp_cmd_r(ftp, &ftpans, "PASV\r\n");
-	while (rc != 227) {
-		switch (rc) {
-		case 0:
-			rc = ftp_cmdcontinue_r(ftp, &ftpans);
-			break;
-		case -1:
-			return -1;
-		default:
-			ftp->errnum = EFTP_UNKWNRPLY;
-			return -1;
-		}
-	}
+	if (ftp_dfthandle_r(ftp, &ftpans, rc, 227) == -1)
+		return -1;
 
 	if (sscanf(ftpans.buffer,
 		   "Entering Passive Mode (%d,%d,%d,%d,%d,%d).",
@@ -564,6 +525,7 @@ int ftp_get(struct ftp *ftp, char *localname, char *remotename)
 	close(localfd);
 	close(pasvfd);
 
+	/* read RETR reply */
 	ftp->cmd.tries = 0;
 	rc = ftp_cmdcontinue(ftp);
 	while (rc != 226) {

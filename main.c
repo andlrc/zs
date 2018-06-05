@@ -83,23 +83,9 @@ static int sourcemain(struct sourceopt *sourceopt, struct ftp *ftp)
 			break;
 
 		rc = ftp_cmd(ftp, "RCMD CRTSAVF FILE(QTEMP/ZS%d)\r\n", i);
-		while (rc != 250) {
-			switch (rc) {
-			case 0:
-				rc = ftp_cmdcontinue(ftp);
-				break;
-			case -1:
-				if (ftp->errnum == EFTP_NOREPLY) {
-					rc = ftp_cmdcontinue(ftp);
-				} else {
-					print_error("failed to create save file: %s\n", ftp_strerror(ftp));
-					return 1;
-				}
-				break;
-			default:
-				print_error("unknown reply code: %d\n", rc);
-				return 1;
-			}
+		if (ftp_dfthandle(ftp, rc, 250) == -1) {
+			print_error("failed to create save file: %s\n", ftp_strerror(ftp));
+			return 1;
 		}
 
 		for (int y = 0; y < Z_LIBLMAX; y++) {
@@ -137,7 +123,7 @@ static int sourcemain(struct sourceopt *sourceopt, struct ftp *ftp)
 					}
 					break;
 				default:
-					print_error("unknown reply code: %d\n", rc);
+					print_error("failed to save object: %s\n", ftp_strerror(ftp));
 					return 1;
 				}
 			}
@@ -149,23 +135,9 @@ static int sourcemain(struct sourceopt *sourceopt, struct ftp *ftp)
 		snprintf(remotename, sizeof(remotename), "/tmp/zs%d.savf", i);
 		rc = ftp_cmd(ftp, "RCMD CPYTOSTMF FROMMBR('/QSYS.LIB/QTEMP.LIB/ZS%d.FILE') TOSTMF('%s') STMFOPT(*REPLACE)\r\n",
 			     i, remotename);
-		while (rc != 250) {
-			switch (rc) {
-			case 0:
-				rc = ftp_cmdcontinue(ftp);
-				break;
-			case -1:
-				if (ftp->errnum == EFTP_NOREPLY) {
-					rc = ftp_cmdcontinue(ftp);
-				} else {
-					print_error("failed to copy to stream file: %s\n", ftp_strerror(ftp));
-					return 1;
-				}
-				break;
-			default:
-				print_error("unknown reply code: %d\n", rc);
-				return 1;
-			}
+		if (ftp_dfthandle(ftp, rc, 250) == -1) {
+			print_error("failed to copy to stream file: %s\n", ftp_strerror(ftp));
+			return 1;
 		}
 
 		strcpy(localname, "/tmp/zs-XXXXXX");
@@ -239,44 +211,16 @@ static int targetmain(struct targetopt *targetopt, struct ftp *ftp)
 
 		rc = ftp_cmd(ftp, "RCMD CPYFRMSTMF FROMSTMF('%s') TOMBR('/QSYS.LIB/QTEMP.LIB/ZS%d.FILE')\r\n",
 			     remotename, i);
-		while (rc != 250) {
-			switch (rc) {
-			case 0:
-				rc = ftp_cmdcontinue(ftp);
-				break;
-			case -1:
-				if (ftp->errnum == EFTP_NOREPLY) {
-					rc = ftp_cmdcontinue(ftp);
-				} else {
-					print_error("failed to copy from stream file: %s\n", ftp_strerror(ftp));
-					return 1;
-				}
-				break;
-			default:
-				print_error("unknown reply code: %d\n", rc);
-				return 1;
-			}
+		if (ftp_dfthandle(ftp, rc, 250) == -1) {
+			print_error("failed to copy from stream file: %s\n", ftp_strerror(ftp));
+			return 1;
 		}
 
 		rc = ftp_cmd(ftp, "RCMD RSTOBJ OBJ(*ALL) SAVLIB(%s) DEV(*SAVF) SAVF(QTEMP/ZS%d) MBROPT(*ALL) RSTLIB(%s)\r\n",
 			     lib, i, targetopt->lib);
-		while (rc != 250) {
-			switch (rc) {
-			case 0:
-				rc = ftp_cmdcontinue(ftp);
-				break;
-			case -1:
-				if (ftp->errnum == EFTP_NOREPLY) {
-					rc = ftp_cmdcontinue(ftp);
-				} else {
-					print_error("failed to restore object: %s\n", ftp_strerror(ftp));
-					return 1;
-				}
-				break;
-			default:
-				print_error("unknown reply code: %d\n", rc);
-				return 1;
-			}
+		if (ftp_dfthandle(ftp, rc, 250) == -1) {
+			print_error("failed to restore object: %s\n", ftp_strerror(ftp));
+			return 1;
 		}
 
 		unlink(line);
