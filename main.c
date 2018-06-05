@@ -61,10 +61,10 @@ static void print_error(char *format, ...)
 	fputs(buf, stderr);
 }
 
-static int sourcemain(struct sourceopt *sourceopt, struct ftp *ftp)
+static int downloadobj(struct sourceopt *sourceopt, struct ftp *ftp,
+		       struct object *obj)
 {
 	int rc;
-	struct object *obj;
 	char *lib;
 	char remotename[PATH_MAX];
 	char localname[PATH_MAX];
@@ -72,8 +72,147 @@ static int sourcemain(struct sourceopt *sourceopt, struct ftp *ftp)
 	char buf[BUFSIZ];
 	int len;
 
+	rc = ftp_cmd(ftp, "RCMD CRTSAVF FILE(QTEMP/ZS)\r\n");
+	if (ftp_dfthandle(ftp, rc, 250) == -1) {
+		print_error("failed to create save file: %s\n",
+			    ftp_strerror(ftp));
+		return 1;
+	}
+
+	for (int y = 0; y < Z_LIBLMAX; y++) {
+		switch (*obj->lib) {
+		case 0:		/* use library list */
+			lib = sourceopt->libl[y];
+			if (*lib == '\0') {
+				print_error("object %s not found in library list\n",
+					    obj->obj);
+				return 1;
+			}
+			break;
+		default:	/* object have own library */
+			lib = obj->lib;
+			if (y > 0) {
+				/* failed in first iteration */
+				print_error("object %s not found in library %s\n",
+					    obj->obj, lib);
+				return 1;
+			}
+			break;
+		}
+
+		/* try to save the object located in $lib */
+		rc = ftp_cmd(ftp, "RCMD SAVOBJ OBJ(%s) OBJTYPE(*%s) LIB(%s) DEV(*SAVF) SAVF(QTEMP/ZS) DTACPR(*HIGH)\r\n",
+			     obj->obj, obj->type, lib);
+		while (rc != 250 && rc != 550) {
+			switch (rc) {
+			case 0:
+				rc = ftp_cmdcontinue(ftp);
+				break;
+			default:
+				print_error("failed to save object: %s\n",
+					    ftp_strerror(ftp));
+				return 1;
+			}
+		}
+
+		/* object was copied */
+		if (rc == 250)
+			break;
+	}
+
+	strcpy(remotename, "/tmp/zs.savf");
+	rc = ftp_cmd(ftp, "RCMD CPYTOSTMF FROMMBR('/QSYS.LIB/QTEMP.LIB/ZS.FILE') TOSTMF('%s') STMFOPT(*REPLACE)\r\n",
+		     remotename);
+	if (ftp_dfthandle(ftp, rc, 250) == -1) {
+		print_error("failed to copy to stream file: %s\n",
+			    ftp_strerror(ftp));
+		return 1;
+	}
+
+	rc = ftp_cmd(ftp, "RCMD DLTF FILE(QTEMP/ZS)\r\n");
+	if (ftp_dfthandle(ftp, rc, 250) == -1) {
+		print_error("failed to remove savf: %s\n",
+			    ftp_strerror(ftp));
+		return 1;
+	}
+
+	strcpy(localname, "/tmp/zs-XXXXXX");
+	destfd = mkstemp(localname);
+	if (destfd == -1) {
+		print_error("failed to create output file: %s\n",
+			    strerror(errno));
+		return 1;
+	}
+	close(destfd);
+
+	printf("downloading %s/%s*%s to %s\n", lib, obj->obj, obj->type,
+	       localname);
+
+	if (ftp_get(ftp, localname, remotename) != 0) {
+		unlink(localname);
+		print_error("failed to get file: %s\n", ftp_strerror(ftp));
+		return 1;
+	}
+
+	len = snprintf(buf, sizeof(buf), "%s:%s\n", lib, localname);
+	if (write(sourceopt->pipe, buf, len) == -1) {
+		print_error("failed to write to target process\n");
+		return 1;
+	}
+
+	return 0;
+}
+
+static int uploadfile(struct targetopt *targetopt, struct ftp *ftp,
+		      char *lib, char *localname)
+{
+	char remotename[PATH_MAX];
+	int rc;
+
+	strcpy(remotename, "/tmp/zs.savf");
+
+	printf("uploading %s to %s\n", localname, remotename);
+
+	if (ftp_put(ftp, localname, remotename) != 0) {
+		unlink(localname);
+		print_error("failed to put file: %s\n", ftp_strerror(ftp));
+		return 1;
+	}
+
+	rc = ftp_cmd(ftp, "RCMD CPYFRMSTMF FROMSTMF('%s') TOMBR('/QSYS.LIB/QTEMP.LIB/ZS.FILE')\r\n",
+		     remotename);
+	if (ftp_dfthandle(ftp, rc, 250) == -1) {
+		print_error("failed to copy from stream file: %s\n",
+			    ftp_strerror(ftp));
+		return 1;
+	}
+
+	rc = ftp_cmd(ftp, "RCMD RSTOBJ OBJ(*ALL) SAVLIB(%s) DEV(*SAVF) SAVF(QTEMP/ZS) MBROPT(*ALL) RSTLIB(%s)\r\n",
+		     lib, targetopt->lib);
+	if (ftp_dfthandle(ftp, rc, 250) == -1) {
+		print_error("failed to restore object: %s\n",
+			    ftp_strerror(ftp));
+		return 1;
+	}
+
+	rc = ftp_cmd(ftp, "RCMD DLTF FILE(QTEMP/ZS)\r\n");
+	if (ftp_dfthandle(ftp, rc, 250) == -1) {
+		print_error("failed to remove savf: %s\n",
+			    ftp_strerror(ftp));
+		return 1;
+	}
+
+	unlink(localname);
+	return 0;
+}
+
+static int sourcemain(struct sourceopt *sourceopt, struct ftp *ftp)
+{
+	struct object *obj;
+
 	if (ftp_connect(ftp) == -1) {
-		print_error("failed to connect to source: %s\n", ftp_strerror(ftp));
+		print_error("failed to connect to source: %s\n",
+			    ftp_strerror(ftp));
 		return 1;
 	}
 
@@ -82,79 +221,8 @@ static int sourcemain(struct sourceopt *sourceopt, struct ftp *ftp)
 		if (*obj->obj == '\0')
 			break;
 
-		rc = ftp_cmd(ftp, "RCMD CRTSAVF FILE(QTEMP/ZS%d)\r\n", i);
-		if (ftp_dfthandle(ftp, rc, 250) == -1) {
-			print_error("failed to create save file: %s\n",
-				    ftp_strerror(ftp));
+		if (downloadobj(sourceopt, ftp, obj) != 0)
 			return 1;
-		}
-
-		for (int y = 0; y < Z_LIBLMAX; y++) {
-			if (*obj->lib) {
-				/* object have own library */
-				lib = obj->lib;
-				/* failed in first iteration */
-				if (y > 0) {
-					print_error("object %s not found in library %s\n", obj->obj, obj->lib);
-					return 1;
-				}
-			} else {
-				/* use library list */
-				lib = sourceopt->libl[y];
-				/* no more libraries on the list to copy the
-				 * object from */
-				if (*lib == '\0') {
-					print_error("object %s not found in library list\n", obj->obj);
-					return 1;
-				}
-			}
-			rc = ftp_cmd(ftp, "RCMD SAVOBJ OBJ(%s) OBJTYPE(*%s) LIB(%s) DEV(*SAVF) SAVF(QTEMP/ZS%d) DTACPR(*HIGH)\r\n",
-				     obj->obj, obj->type, lib, i);
-			while (rc != 250 && rc != 550) {
-				switch (rc) {
-				case 0:
-					rc = ftp_cmdcontinue(ftp);
-					break;
-				default:
-					print_error("failed to save object: %s\n", ftp_strerror(ftp));
-					return 1;
-				}
-			}
-			/* object was copied */
-			if (rc == 250)
-				break;
-		}
-
-		snprintf(remotename, sizeof(remotename), "/tmp/zs%d.savf", i);
-		rc = ftp_cmd(ftp, "RCMD CPYTOSTMF FROMMBR('/QSYS.LIB/QTEMP.LIB/ZS%d.FILE') TOSTMF('%s') STMFOPT(*REPLACE)\r\n",
-			     i, remotename);
-		if (ftp_dfthandle(ftp, rc, 250) == -1) {
-			print_error("failed to copy to stream file: %s\n",
-				    ftp_strerror(ftp));
-			return 1;
-		}
-
-		strcpy(localname, "/tmp/zs-XXXXXX");
-		destfd = mkstemp(localname);
-		if (destfd == -1) {
-			print_error("failed to create output file: %s\n", strerror(errno));
-			return 1;
-		}
-		close(destfd);
-
-		printf("downloading %s/%s*%s to %s\n", lib, obj->obj, obj->type, localname);
-
-		if (ftp_get(ftp, localname, remotename) != 0) {
-			unlink(localname);
-			print_error("failed to get file: %s\n", ftp_strerror(ftp));
-			return 1;
-		}
-
-		len = snprintf(buf, sizeof(buf), "%s:%s\n", lib, localname);
-		if (write(sourceopt->pipe, buf, len) == -1) {
-			print_error("failed to write to target process\n");
-			return 1;
-		}
 	}
 
 	return 0;
@@ -166,12 +234,11 @@ static int targetmain(struct targetopt *targetopt, struct ftp *ftp)
 	char *line;
 	char *lib, *localname;
 	char *saveptr;
-	char remotename[PATH_MAX];
 	size_t linesiz;
-	int rc;
 
 	if (ftp_connect(ftp) == -1) {
-		print_error("failed to connect to target: %s\n", ftp_strerror(ftp));
+		print_error("failed to connect to target: %s\n",
+			    ftp_strerror(ftp));
 		return 1;
 	}
 
@@ -193,33 +260,8 @@ static int targetmain(struct targetopt *targetopt, struct ftp *ftp)
 			return 1;
 		}
 
-		snprintf(remotename, sizeof(remotename), "/tmp/zs%d.savf", i);
-
-		printf("uploading %s to %s\n", localname, remotename);
-
-		if (ftp_put(ftp, localname, remotename) != 0) {
-			unlink(localname);
-			print_error("failed to put file: %s\n", ftp_strerror(ftp));
+		if (uploadfile(targetopt, ftp, lib, localname) != 0)
 			return 1;
-		}
-
-		rc = ftp_cmd(ftp, "RCMD CPYFRMSTMF FROMSTMF('%s') TOMBR('/QSYS.LIB/QTEMP.LIB/ZS%d.FILE')\r\n",
-			     remotename, i);
-		if (ftp_dfthandle(ftp, rc, 250) == -1) {
-			print_error("failed to copy from stream file: %s\n",
-				    ftp_strerror(ftp));
-			return 1;
-		}
-
-		rc = ftp_cmd(ftp, "RCMD RSTOBJ OBJ(*ALL) SAVLIB(%s) DEV(*SAVF) SAVF(QTEMP/ZS%d) MBROPT(*ALL) RSTLIB(%s)\r\n",
-			     lib, i, targetopt->lib);
-		if (ftp_dfthandle(ftp, rc, 250) == -1) {
-			print_error("failed to restore object: %s\n",
-				    ftp_strerror(ftp));
-			return 1;
-		}
-
-		unlink(line);
 	}
 
 	free(line);
