@@ -253,7 +253,7 @@ ssize_t ftp_write(struct ftp *ftp, void *buf, size_t count)
 		break;
 	default:
 		if (strncmp(buf, "PASS ", 5) == 0) {
-			print_debug(ftp, FTP_VERBOSE_SOME, "WRITE: PASS ******");
+			print_debug(ftp, FTP_VERBOSE_SOME, "WRITE: PASS ******\n");
 		} else {
 			print_debug(ftp, FTP_VERBOSE_SOME, "WRITE: %*s", (int)rc, (char *)buf);
 		}
