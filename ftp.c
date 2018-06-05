@@ -19,7 +19,8 @@ static const char *ftp_error_messages[] = {
 	"no reply from server",
 	"multi line reply from server",
 	"not logged in",
-	"reading from socket would block"
+	"reading from socket would block",
+	"unknown variable"
 };
 
 static void print_debug(struct ftp *ftp, enum ftp_verbosity verbosity,
@@ -45,6 +46,7 @@ void ftp_init(struct ftp *ftp)
 {
 	memset(ftp, 0, sizeof(struct ftp));
 	ftp->recvline.buffer = NULL;
+	ftp->server.port = FTP_PORT;
 }
 
 void ftp_close(struct ftp *ftp)
@@ -56,13 +58,46 @@ void ftp_close(struct ftp *ftp)
 	ftp->recvline.buffer = NULL;
 }
 
-int ftp_connect(struct ftp *ftp, struct ftpserver *server)
+int ftp_set_variable(struct ftp *ftp, enum ftp_variable var, char *val)
+{
+	switch (var) {
+	case FTP_VAR_HOST:
+		memcpy(ftp->server.host, val, FTP_HSTSIZ);
+		ftp->server.host[FTP_HSTSIZ - 1] = '\0';
+		break;
+	case FTP_VAR_USER:
+		memcpy(ftp->server.user, val, FTP_USRSIZ);
+		ftp->server.user[FTP_USRSIZ - 1] = '\0';
+		break;
+	case FTP_VAR_PASSWORD:
+		memcpy(ftp->server.password, val, FTP_PWDSIZ);
+		ftp->server.password[FTP_PWDSIZ - 1] = '\0';
+		break;
+	case FTP_VAR_PORT:
+		ftp->server.port = atoi(val);
+		break;
+	case FTP_VAR_VERBOSE:
+		if (*val == '+' || *val == '-') {
+			ftp->verbosity += atoi(val);
+		} else {
+			ftp->verbosity = atoi(val);
+		}
+		break;
+	default:
+		ftp->errnum = EFTP_UNKWNVAR;
+		return -1;
+	}
+
+	return 0;
+}
+
+int ftp_connect(struct ftp *ftp)
 {
 	struct addrinfo hints, *res, *ressave;
 	int rc;
 	char sport[6];
 
-	snprintf(sport, sizeof(sport), "%d", server->port);
+	snprintf(sport, sizeof(sport), "%d", ftp->server.port);
 
 	memset(&hints, 0, sizeof(struct addrinfo));
 
@@ -70,7 +105,7 @@ int ftp_connect(struct ftp *ftp, struct ftpserver *server)
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_flags = AI_NUMERICSERV;
 
-	switch (getaddrinfo(server->host, sport, &hints, &res)) {
+	switch (getaddrinfo(ftp->server.host, sport, &hints, &res)) {
 	case EAI_SYSTEM:
 		ftp->errnum = EFTP_SYSTEM;
 		return -1;
@@ -131,14 +166,15 @@ int ftp_connect(struct ftp *ftp, struct ftpserver *server)
 		return -1;
 
 	/* TODO: try to figure out a proper AUTH */
+	/* AUTH TLS | AUTH SSL */
 
 	/* login */
-	if (*server->user) {
-		rc = ftp_cmd(ftp, "USER %s\r\n", server->user);
+	if (*ftp->server.user) {
+		rc = ftp_cmd(ftp, "USER %s\r\n", ftp->server.user);
 		if (ftp_dfthandle(ftp, rc, 331) == -1)
 			return -1;
 
-		rc = ftp_cmd(ftp, "PASS %s\r\n", server->password);
+		rc = ftp_cmd(ftp, "PASS %s\r\n", ftp->server.password);
 		if (ftp_dfthandle(ftp, rc, 230) == -1)
 			return -1;
 	}
@@ -227,10 +263,10 @@ int ftp_dfthandle_r(struct ftp *ftp, struct ftpansbuf *ftpans,
 		case 0:
 			rc = ftp_cmdcontinue_r(ftp, ftpans);
 			break;
-		case -1:
-			return -1;
 		case 530:
 			ftp->errnum = EFTP_NOTLOGGEDIN;
+			return -1;
+		case -1: /* timeout */
 			return -1;
 		default:
 			ftp->errnum = EFTP_UNKWNRPLY;
@@ -419,8 +455,6 @@ int ftp_put(struct ftp *ftp, char *localname, char *remotename)
 		return -1;
 	}
 
-	/* TODO: try to figure out a proper AUTH */
-
 	snprintf(buf, sizeof(buf), "STOR %s\r\n", remotename);
 	rc = ftp_write(ftp, buf, strlen(buf));
 
@@ -499,8 +533,6 @@ int ftp_get(struct ftp *ftp, char *localname, char *remotename)
 		ftp->errnum = EFTP_SYSTEM;
 		return -1;
 	}
-
-	/* TODO: try to figure out a proper AUTH */
 
 	snprintf(buf, sizeof(buf), "RETR %s\r\n", remotename);
 	rc = ftp_write(ftp, buf, strlen(buf));

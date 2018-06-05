@@ -13,6 +13,7 @@ enum ftp_errors {
 	EFTP_CONTREPLY,
 	EFTP_NOTLOGGEDIN,
 	EFTP_WOULDBLOCK,
+	EFTP_UNKWNVAR,
 
 	/* system errors */
 	EFTP_SYSTEM = 99,
@@ -34,18 +35,12 @@ enum ftp_verbosity {
 	FTP_VERBOSE_MORE = 2
 };
 
-struct ftp {
-	enum ftp_errors errnum;
-	enum ftp_verbosity verbosity;
-	int sock;
-	struct {
-		int tries;
-	} cmd;
-	struct {
-		char *buffer;
-		char *end;
-		size_t size;
-	} recvline;
+enum ftp_variable {
+	FTP_VAR_HOST = 0,
+	FTP_VAR_USER,
+	FTP_VAR_PASSWORD,
+	FTP_VAR_VERBOSE,
+	FTP_VAR_PORT
 };
 
 #define FTP_HSTSIZ	256
@@ -59,6 +54,20 @@ struct ftpserver {
 	char password[FTP_PWDSIZ];
 };
 
+struct ftp {
+	enum ftp_errors errnum;
+	enum ftp_verbosity verbosity;
+	int sock;
+	struct ftpserver server;
+	struct {
+		int tries;
+	} cmd;
+	struct {
+		char *buffer;
+		char *end;
+		size_t size;
+	} recvline;
+};
 
 struct ftpansbuf {
 	int reply;
@@ -67,8 +76,9 @@ struct ftpansbuf {
 };
 
 void ftp_init(struct ftp *);
-int ftp_connect(struct ftp *, struct ftpserver *);
 void ftp_close(struct ftp *);
+int ftp_set_variable(struct ftp *, enum ftp_variable, char *);
+int ftp_connect(struct ftp *);
 ssize_t ftp_recvline(struct ftp *, char *, size_t);
 int ftp_recvans(struct ftp *, struct ftpansbuf *);
 ssize_t ftp_recv(struct ftp *, void *, size_t, int);

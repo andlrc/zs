@@ -9,8 +9,8 @@ enum util_errors {
 	EUTIL_SYSTEM = 99
 };
 
-int util_parsecfg(struct ftpserver *server, char *filename);
-int util_parselibl(struct sourceopt *sourceopt, char *optlibl);
-int util_parseobj(struct object *obj, char *optobj);
+int util_parsecfg(struct ftp *, char *);
+int util_parselibl(struct sourceopt *, char *);
+int util_parseobj(struct object *, char *);
 const char *util_strerror(int errnum);
 #endif

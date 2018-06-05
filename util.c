@@ -2,6 +2,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <stdlib.h>
+
 #include "ftp.h"
 #include "zs.h"
 #include "util.h"
@@ -13,7 +14,7 @@ static const char *util_error_messages[] = {
 	"maximum libraries reached"
 };
 
-int util_parsecfg(struct ftpserver *server, char *filename)
+int util_parsecfg(struct ftp *ftp, char *filename)
 {
 	/* ($option <sp> $value <nl>)* */
 	FILE *fp;
@@ -56,14 +57,13 @@ int util_parsecfg(struct ftpserver *server, char *filename)
 		*(strchr(pline, '\n')) = '\0';
 
 		if (strcmp(key, "server") == 0 || strcmp(key, "host") == 0) {
-			strncpy(server->host, pline, FTP_HSTSIZ);
-			server->host[FTP_HSTSIZ - 1] = '\0';
+			ftp_set_variable(ftp, FTP_VAR_HOST, pline);
 		} else if (strcmp(key, "user") == 0) {
-			strncpy(server->user, pline, FTP_USRSIZ);
-			server->user[FTP_USRSIZ - 1] = '\0';
+			ftp_set_variable(ftp, FTP_VAR_USER, pline);
 		} else if (strcmp(key, "password") == 0) {
-			strncpy(server->password, pline, FTP_PWDSIZ);
-			server->password[FTP_PWDSIZ - 1] = '\0';
+			ftp_set_variable(ftp, FTP_VAR_PASSWORD, pline);
+		} else if (strcmp(key, "port") == 0) {
+			ftp_set_variable(ftp, FTP_VAR_PORT, pline);
 		} else {
 			return EUTIL_UNKNOWNKEY;
 		}

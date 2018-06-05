@@ -15,14 +15,12 @@ struct object {
 };
 
 struct sourceopt {
-	struct ftpserver server;
 	int pipe;
 	char libl[Z_LIBLMAX][Z_LIBSIZ];
 	struct object objects[Z_OBJMAX];
 };
 
 struct targetopt {
-	struct ftpserver server;
 	int pipe;
 	char lib[Z_LIBSIZ];
 };

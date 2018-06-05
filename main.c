@@ -72,7 +72,7 @@ static int sourcemain(struct sourceopt *sourceopt, struct ftp *ftp)
 	char buf[BUFSIZ];
 	int len;
 
-	if (ftp_connect(ftp, &sourceopt->server) == -1) {
+	if (ftp_connect(ftp) == -1) {
 		print_error("failed to connect to source: %s\n", ftp_strerror(ftp));
 		return 1;
 	}
@@ -114,14 +114,6 @@ static int sourcemain(struct sourceopt *sourceopt, struct ftp *ftp)
 				switch (rc) {
 				case 0:
 					rc = ftp_cmdcontinue(ftp);
-					break;
-				case -1:
-					if (ftp->errnum == EFTP_NOREPLY) {
-						rc = ftp_cmdcontinue(ftp);
-					} else {
-						print_error("failed to save object: %s\n", ftp_strerror(ftp));
-						return 1;
-					}
 					break;
 				default:
 					print_error("failed to save object: %s\n", ftp_strerror(ftp));
@@ -178,7 +170,7 @@ static int targetmain(struct targetopt *targetopt, struct ftp *ftp)
 	size_t linesiz;
 	int rc;
 
-	if (ftp_connect(ftp, &targetopt->server) == -1) {
+	if (ftp_connect(ftp) == -1) {
 		print_error("failed to connect to target: %s\n", ftp_strerror(ftp));
 		return 1;
 	}
@@ -267,19 +259,17 @@ int main(int argc, char **argv)
 			print_help();
 			return 0;
 		case 'v':
-			sourceftp.verbosity++;
-			targetftp.verbosity++;
+			ftp_set_variable(&sourceftp, FTP_VAR_VERBOSE, "+1");
+			ftp_set_variable(&targetftp, FTP_VAR_VERBOSE, "+1");
 			break;
 		case 's':
-			strncpy(sourceopt.server.host, optarg, FTP_HSTSIZ);
-			sourceopt.server.host[FTP_HSTSIZ - 1] = '\0';
+			ftp_set_variable(&sourceftp, FTP_VAR_HOST, optarg);
 			break;
 		case 'u':
-			strncpy(sourceopt.server.user, optarg, FTP_USRSIZ);
-			sourceopt.server.user[FTP_USRSIZ - 1] = '\0';
+			ftp_set_variable(&sourceftp, FTP_VAR_USER, optarg);
 			break;
 		case 'p':
-			sourceopt.server.port = atoi(optarg);
+			ftp_set_variable(&sourceftp, FTP_VAR_PORT, optarg);
 			break;
 		case 'l':
 			rc = util_parselibl(&sourceopt, optarg);
@@ -287,59 +277,31 @@ int main(int argc, char **argv)
 				print_error("failed to parse library list: %s\n", util_strerror(rc));
 			break;
 		case 'c':
-			rc = util_parsecfg(&sourceopt.server, optarg);
+			rc = util_parsecfg(&sourceftp, optarg);
 			if (rc != 0)
 				print_error("failed to parse config file: %s\n", util_strerror(rc));
 			break;
 		case 'S':
-			strncpy(targetopt.server.host, optarg, FTP_HSTSIZ);
-			targetopt.server.host[FTP_HSTSIZ - 1] = '\0';
+			ftp_set_variable(&targetftp, FTP_VAR_HOST, optarg);
 			break;
 		case 'U':
-			strncpy(targetopt.server.user, optarg, FTP_USRSIZ);
-			targetopt.server.user[FTP_USRSIZ - 1] = '\0';
+			ftp_set_variable(&targetftp, FTP_VAR_USER, optarg);
 			break;
 		case 'P':
-			targetopt.server.port = atoi(optarg);
+			ftp_set_variable(&targetftp, FTP_VAR_PORT, optarg);
 			break;
 		case 'L':
 			strncpy(targetopt.lib, optarg, Z_LIBSIZ);
 			targetopt.lib[Z_LIBSIZ - 1] = '\0';
 			break;
 		case 'C':
-			rc = util_parsecfg(&targetopt.server, optarg);
+			rc = util_parsecfg(&targetftp, optarg);
 			if (rc != 0)
 				print_error("failed to parse config file: %s\n", util_strerror(rc));
 			break;
 		default:
 			return 2;
 		}
-	}
-
-	if (*sourceopt.server.host == '\0') {
-		print_error("missing source host (-s)\n");
-		return 2;
-	}
-
-	if (sourceopt.server.port == 0)
-		sourceopt.server.port = FTP_PORT;
-
-	if (*targetopt.server.host == '\0') {
-		print_error("missing target host (-S)\n");
-		return 2;
-	}
-
-	if (targetopt.server.port == 0)
-		targetopt.server.port = FTP_PORT;
-
-	if (*targetopt.lib == '\0') {
-		print_error("missing target library (-L)\n");
-		return 2;
-	}
-
-	if (optind == argc) {
-		print_error("missing an object\n");
-		return 2;
 	}
 
 	/* slurp objects */
@@ -350,6 +312,11 @@ int main(int argc, char **argv)
 		if (y == Z_OBJMAX) {
 			print_error("maximum of %d objects reached\n", Z_OBJMAX);
 		}
+	}
+
+	if (*sourceopt.objects[0].obj == '\0') {
+		print_error("missing an object\n");
+		return 2;
 	}
 
 	int pipefd[2];
