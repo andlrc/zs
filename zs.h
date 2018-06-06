@@ -3,6 +3,7 @@
 
 #define Z_LIBLMAX	16
 #define Z_OBJMAX	128
+#define Z_TYPMAX	16
 
 #define Z_LIBSIZ	11
 #define Z_OBJSIZ	11
@@ -18,6 +19,7 @@ struct sourceopt {
 	int pipe;
 	char libl[Z_LIBLMAX][Z_LIBSIZ];
 	struct object objects[Z_OBJMAX];
+	char types[Z_TYPMAX][Z_TYPSIZ];
 };
 
 struct targetopt {

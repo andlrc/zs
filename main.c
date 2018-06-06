@@ -25,22 +25,24 @@ static void print_help(void)
 	printf("Usage %s [OPTION]... OBJECT...\n"
 	       "Copy objects from one AS/400 to another\n"
 	       "\n"
-	       "  -s host  set source host\n"
-	       "  -u user  set source user\n"
-	       "  -p port  set source port\n"
-	       "  -l libl  set source library list\n"
-	       "           comma seperated list of libraries\n"
-	       "  -c file  source config file\n"
+	       "  -s host       set source host\n"
+	       "  -u user       set source user\n"
+	       "  -p port       set source port\n"
+	       "  -l libl       set source library list\n"
+	       "                comma seperated list of libraries\n"
+	       "  -t types      set type list\n"
+	       "                comma seperated list of types\n"
+	       "  -c file       source config file\n"
 	       "\n"
-	       "  -S host  set target host\n"
-	       "  -U user  set target user\n"
-	       "  -P port  set target port\n"
-	       "  -C file  source config file\n"
-	       "  -L       set target destination library\n"
+	       "  -S host       set target host\n"
+	       "  -U user       set target user\n"
+	       "  -P port       set target port\n"
+	       "  -C file       source config file\n"
+	       "  -L            set target destination library\n"
 	       "\n"
-	       "  -v       level of verbosity, can be set multiple times\n"
-	       "  -V       output version information and exit\n"
-	       "  -h       show this help message and exit\n"
+	       "  -v            level of verbosity, can be set multiple times\n"
+	       "  -V            output version information and exit\n"
+	       "  -h            show this help message and exit\n"
 	       "\n"
 	       "See zs(1) for more information\n",
 	       program_name);
@@ -65,7 +67,9 @@ static int downloadobj(struct sourceopt *sourceopt, struct ftp *ftp,
 		       struct object *obj)
 {
 	int rc;
-	char *lib;
+
+	char *lib, *type;
+
 	char remotename[PATH_MAX];
 	char localname[PATH_MAX];
 	int destfd;
@@ -79,47 +83,59 @@ static int downloadobj(struct sourceopt *sourceopt, struct ftp *ftp,
 		return 1;
 	}
 
-	for (int y = 0; y < Z_LIBLMAX; y++) {
-		switch (*obj->lib) {
-		case 0:	/* use library list */
-			lib = sourceopt->libl[y];
-			if (*lib == '\0') {
-				print_error("object %s not found in library list\n",
-					    obj->obj);
-				return 1;
-			}
-			break;
-		default:	/* object have own library */
-			lib = obj->lib;
-			if (y > 0) {
-				/* failed in first iteration */
-				print_error("object %s not found in library %s\n",
-					    obj->obj, lib);
-				return 1;
-			}
-			break;
-		}
+	for (int i = 0, n = 0; i < Z_LIBLMAX; i++) {
+		for (int y = 0; y < Z_TYPMAX; y++, n++) {
+			lib = *obj->lib ? obj->lib : sourceopt->libl[i];
+			type = *obj->type ? obj->type : sourceopt->types[y];
 
-		/* try to save the object located in $lib */
-		rc = ftp_cmd(ftp, "RCMD SAVOBJ OBJ(%s) OBJTYPE(*%s) LIB(%s) DEV(*SAVF) SAVF(QTEMP/ZS) DTACPR(*HIGH)\r\n",
-			     obj->obj, obj->type, lib);
-		while (rc != 250 && rc != 550) {
-			switch (rc) {
-			case 0:
-				rc = ftp_cmdcontinue(ftp);
+			if (*lib == '\0')
 				break;
-			default:
-				print_error("failed to save object: %s\n",
-					    ftp_strerror(ftp));
-				return 1;
+
+			if (*type == '\0') {
+				if (y == 0) {
+					type = "ALL";
+				} else {
+					break;
+				}
 			}
+
+			/* try to save the object located in $lib */
+			rc = ftp_cmd(ftp, "RCMD SAVOBJ OBJ(%s) OBJTYPE(*%s) LIB(%s) DEV(*SAVF) SAVF(QTEMP/ZS) DTACPR(*HIGH)\r\n",
+				     obj->obj, type, lib);
+			while (rc != 250 && rc != 550) {
+				switch (rc) {
+				case 0:
+					rc = ftp_cmdcontinue(ftp);
+					break;
+				default:
+					print_error("failed to save object: %s\n",
+						    ftp_strerror(ftp));
+					return 1;
+				}
+			}
+
+			/* object was copied */
+			if (rc == 250)
+				goto upload;
+
+			/* don't check all provided types, (object have own) */
+			if (*obj->type)
+				break;
 		}
 
-		/* object was copied */
-		if (rc == 250)
+		/* no more libs in libl */
+		if (*lib == '\0')
+			break;
+
+		/* don't check whole libl, (object have own) */
+		if (*obj->lib)
 			break;
 	}
 
+	print_error("object %s not found\n", obj->obj);
+	return 1;
+
+      upload:
 	/* TODO: figure out a way to guarentee an unique file on the server */
 	snprintf(remotename, sizeof(remotename), "/tmp/zs-%d-get.savf",
 		 getpid());
@@ -323,7 +339,7 @@ int main(int argc, char **argv)
 	memset(&sourceopt, 0, sizeof(sourceopt));
 	memset(&targetopt, 0, sizeof(targetopt));
 
-	while ((c = getopt(argc, argv, "Vhvs:u:p:l:c:S:U:P:C:L:")) != -1) {
+	while ((c = getopt(argc, argv, "Vhvs:u:p:l:t:c:S:U:P:C:L:")) != -1) {
 		switch (c) {
 		case 'V':
 			print_version();
@@ -348,6 +364,12 @@ int main(int argc, char **argv)
 			rc = util_parselibl(&sourceopt, optarg);
 			if (rc != 0)
 				print_error("failed to parse library list: %s\n",
+					    util_strerror(rc));
+			break;
+		case 't':
+			rc = util_parsetypes(&sourceopt, optarg);
+			if (rc != 0)
+				print_error("failed to parse types: %s\n",
 					    util_strerror(rc));
 			break;
 		case 'c':

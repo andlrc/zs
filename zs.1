@@ -23,11 +23,20 @@ set source port
 \fB\-l\fR \fILIBL\fR
 set source library list
 .IP
-a comma separated list of libraries to search for the specified objects if a
-library isn't explicitly provided with the object
+a comma separated list of libraries to search in when an object doesn't have an
+explicit library set
 .IP
 can be specified multiple times, each adding to the complete list of libraries
-to search
+to search in
+.TP
+\fB\-t\fR \fITYPES\fR
+set source types
+.IP
+a comma separated list of types to use when an object doesn't have an explicit
+type set
+.IP
+can be specified multiple times, each adding to the complete list of object
+types to search for
 .TP
 \fB\-c\fR \fIFILE\fR
 a file following the schema defined in
@@ -100,9 +109,12 @@ and the
 .I TYPE
 .IP "-" 2
 .I TYPE
-is the object type to copy, if omitted the all types are copied, this is the
-same as typing
-.B ALL
+is the object type to copy.
+If omitted then the type list is searched, see the
+.B \-t
+option. If the type list is empty, then all objects are copied, same as using
+.I ALL
+as the type
 .PP
 Consult your local system administrator for a full list of supported types.
 .RE

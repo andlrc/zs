@@ -11,7 +11,8 @@ static const char *util_error_messages[] = {
 	"success",
 	"missing value for option",
 	"unknown option",
-	"maximum libraries reached"
+	"maximum libraries reached",
+	"maximum types reached"
 };
 
 int util_parsecfg(struct ftp *ftp, char *filename)
@@ -100,6 +101,30 @@ int util_parselibl(struct sourceopt *sourceopt, char *optlibl)
 	return 0;
 }
 
+int util_parsetypes(struct sourceopt *sourceopt, char *opttypes)
+{
+	/*
+	 * $type  = "*" TYPE | TYPE
+	 * $types = $type | $types "," $type
+	 * "type1,type2,...typeN"
+	 */
+	char *saveptr, *p;
+	int i = 0;
+
+	p = strtok_r(opttypes, ",", &saveptr);
+	do {
+		if (i == Z_TYPMAX) {
+			return EUTIL_MAXTYP;
+		}
+
+		strncpy(sourceopt->types[i], p, Z_TYPSIZ);
+		sourceopt->types[i][Z_TYPSIZ - 1] = '\0';
+		i++;
+	} while ((p = strtok_r(NULL, ",", &saveptr)) != NULL);
+
+	return 0;
+}
+
 int util_parseobj(struct object *obj, char *optobj)
 {
 	/*
@@ -131,8 +156,6 @@ int util_parseobj(struct object *obj, char *optobj)
 	if (p != NULL) {
 		strncpy(obj->type, p, Z_TYPSIZ);
 		obj->type[Z_TYPSIZ - 1] = '\0';
-	} else {
-		strcpy(obj->type, "ALL");
 	}
 
 	return 0;
