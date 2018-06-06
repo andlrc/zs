@@ -120,7 +120,8 @@ static int downloadobj(struct sourceopt *sourceopt, struct ftp *ftp,
 			break;
 	}
 
-	snprintf(remotename, sizeof(remotename), "/tmp/zs-%d-put.savf",
+	/* TODO: figure out a way to guarentee an unique file on the server */
+	snprintf(remotename, sizeof(remotename), "/tmp/zs-%d-get.savf",
 		 getpid());
 	rc = ftp_cmd(ftp, "RCMD CPYTOSTMF FROMMBR('/QSYS.LIB/QTEMP.LIB/ZS.FILE') TOSTMF('%s') STMFOPT(*REPLACE)\r\n",
 		     remotename);
@@ -177,7 +178,8 @@ static int uploadfile(struct targetopt *targetopt, struct ftp *ftp,
 	char remotename[PATH_MAX];
 	int rc;
 
-	snprintf(remotename, sizeof(remotename), "/tmp/zs-%d-get.savf",
+	/* TODO: figure out a way to guarentee an unique file on the server */
+	snprintf(remotename, sizeof(remotename), "/tmp/zs-%d-put.savf",
 		 getpid());
 
 	printf("uploading %s to %s\n", localname, remotename);
@@ -187,6 +189,7 @@ static int uploadfile(struct targetopt *targetopt, struct ftp *ftp,
 		print_error("failed to put file: %s\n", ftp_strerror(ftp));
 		return 1;
 	}
+	unlink(localname);
 
 	rc = ftp_cmd(ftp, "RCMD CPYFRMSTMF FROMSTMF('%s') TOMBR('/QSYS.LIB/QTEMP.LIB/ZS.FILE')\r\n",
 		     remotename);
@@ -218,7 +221,6 @@ static int uploadfile(struct targetopt *targetopt, struct ftp *ftp,
 		return 1;
 	}
 
-	unlink(localname);
 	return 0;
 }
 
