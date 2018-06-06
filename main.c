@@ -81,7 +81,7 @@ static int downloadobj(struct sourceopt *sourceopt, struct ftp *ftp,
 
 	for (int y = 0; y < Z_LIBLMAX; y++) {
 		switch (*obj->lib) {
-		case 0:		/* use library list */
+		case 0:	/* use library list */
 			lib = sourceopt->libl[y];
 			if (*lib == '\0') {
 				print_error("object %s not found in library list\n",
@@ -306,7 +306,7 @@ int main(int argc, char **argv)
 
 	ftp_init(&sourceftp);
 	ftp_init(&targetftp);
-	
+
 	memset(&sourceopt, 0, sizeof(sourceopt));
 	memset(&targetopt, 0, sizeof(targetopt));
 
@@ -386,11 +386,12 @@ int main(int argc, char **argv)
 
 	int pipefd[2];
 	if (pipe(pipefd) != 0) {
-		print_error("failed to create pipe: %s\n", strerror(errno));
+		print_error("failed to create pipe: %s\n",
+			    strerror(errno));
 		return 1;
 	}
 
-	switch(fork()) {
+	switch (fork()) {
 	case -1:
 		print_error("failed to fork: %s\n", strerror(errno));
 		return 1;

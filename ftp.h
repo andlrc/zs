@@ -71,7 +71,7 @@ struct ftp {
 
 struct ftpansbuf {
 	int reply;
-	int continues; /* boolean */
+	int continues;		/* boolean */
 	char buffer[BUFSIZ];
 };
 

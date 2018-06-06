@@ -138,14 +138,12 @@ int ftp_connect(struct ftp *ftp)
 		return -1;
 	}
 
-	for (ftp->sock = -1, ressave = res;
-	     res;
-	     res = res->ai_next) {
+	for (ftp->sock = -1, ressave = res; res; res = res->ai_next) {
 		if ((ftp->sock = socket(res->ai_family, res->ai_socktype,
 					res->ai_protocol)) < 0)
 			continue;	/* ignore */
 		if (connect(ftp->sock, res->ai_addr, res->ai_addrlen) == 0)
-			break;		/* success */
+			break;	/* success */
 		close(ftp->sock);
 		ftp->sock = -1;
 	}
@@ -165,7 +163,7 @@ int ftp_connect(struct ftp *ftp)
 	if (ftp_dfthandle(ftp, rc, 220) == -1)
 		return -1;
 
-	/* TODO: try to figure out a proper AUTH */
+	/* FIXME: figure out a proper AUTH */
 	/* AUTH TLS | AUTH SSL */
 
 	/* login */
@@ -266,7 +264,7 @@ int ftp_dfthandle_r(struct ftp *ftp, struct ftpansbuf *ftpans,
 		case 530:
 			ftp->errnum = EFTP_NOTLOGGEDIN;
 			return -1;
-		case -1: /* timeout */
+		case -1:	/* timeout */
 			return -1;
 		default:
 			ftp->errnum = EFTP_UNKWNRPLY;
@@ -276,7 +274,7 @@ int ftp_dfthandle_r(struct ftp *ftp, struct ftpansbuf *ftpans,
 	return 0;
 }
 
-ssize_t ftp_write(struct ftp *ftp, void *buf, size_t count)
+ssize_t ftp_write(struct ftp * ftp, void *buf, size_t count)
 {
 	ssize_t rc;
 	rc = write(ftp->sock, buf, count);
@@ -294,14 +292,14 @@ ssize_t ftp_write(struct ftp *ftp, void *buf, size_t count)
 				    "WRITE: PASS ******\n");
 		} else {
 			print_debug(ftp, FTP_VERBOSE_SOME, "WRITE: %*s",
-				    (int)rc, (char *)buf);
+				    (int) rc, (char *) buf);
 		}
 	}
 
 	return rc;
 }
 
-ssize_t ftp_recv(struct ftp *ftp, void *buf, size_t len, int flags)
+ssize_t ftp_recv(struct ftp * ftp, void *buf, size_t len, int flags)
 {
 	ssize_t rc;
 	rc = recv(ftp->sock, buf, len, flags);
@@ -315,7 +313,7 @@ ssize_t ftp_recv(struct ftp *ftp, void *buf, size_t len, int flags)
 		break;
 	default:
 		print_debug(ftp, FTP_VERBOSE_MORE, "RECV: <%*s>",
-			    (int)rc, (char *)buf);
+			    (int) rc, (char *) buf);
 	}
 
 	return rc;
@@ -327,7 +325,7 @@ int ftp_recvans(struct ftp *ftp, struct ftpansbuf *ansbuf)
 	ssize_t recvlen;
 	int rc;
 
-       	recvlen = ftp_recvline(ftp, buf, sizeof(buf));
+	recvlen = ftp_recvline(ftp, buf, sizeof(buf));
 	if (recvlen <= 0)
 		return -1;
 	if (recvlen < 4) {
@@ -354,7 +352,7 @@ int ftp_recvans(struct ftp *ftp, struct ftpansbuf *ansbuf)
 	return 0;
 }
 
-ssize_t ftp_recvline(struct ftp *ftp, char *resbuf, size_t ressiz)
+ssize_t ftp_recvline(struct ftp * ftp, char *resbuf, size_t ressiz)
 {
 	char recvbuf[BUFSIZ];
 	char *pbufnl;
@@ -386,7 +384,8 @@ ssize_t ftp_recvline(struct ftp *ftp, char *resbuf, size_t ressiz)
 		}
 
 		/* realloc if needed */
-		while (ftp->recvline.end - ftp->recvline.buffer + recvlen >= (ssize_t) ftp->recvline.size) {
+		while (ftp->recvline.end - ftp->recvline.buffer +
+		       recvlen >= (ssize_t) ftp->recvline.size) {
 			ftp->recvline.size *= 2;
 			char *p = realloc(ftp->recvline.buffer, ftp->recvline.size);
 			if (!p) {
@@ -412,7 +411,8 @@ ssize_t ftp_recvline(struct ftp *ftp, char *resbuf, size_t ressiz)
 	resbuf[nloffset] = '\n';	/* CR */
 	resbuf[nloffset + 1] = '\0';	/* NL */
 
-	memmove(ftp->recvline.buffer, pbufnl + 2, ftp->recvline.end - (pbufnl + 1));
+	memmove(ftp->recvline.buffer, pbufnl + 2,
+		ftp->recvline.end - (pbufnl + 1));
 	if (*ftp->recvline.buffer == '\0') {
 		free(ftp->recvline.buffer);
 		ftp->recvline.buffer = 0;
@@ -456,7 +456,7 @@ int ftp_put(struct ftp *ftp, char *localname, char *remotename)
 	addr.sin_addr.s_addr = (h4 << 24) + (h3 << 16) + (h2 << 8) + h1;
 	addr.sin_port = htons(p1 * 256 + p2);
 
-	if (connect(pasvfd, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
+	if (connect(pasvfd, (struct sockaddr *) &addr, sizeof(addr)) == -1) {
 		ftp->errnum = EFTP_SYSTEM;
 		return -1;
 	}
@@ -478,7 +478,8 @@ int ftp_put(struct ftp *ftp, char *localname, char *remotename)
 
 	do {
 		reslen = read(localfd, resbuf, sizeof(resbuf));
-		if (reslen == -1 || write(pasvfd, resbuf, reslen) != reslen) {
+		if (reslen == -1
+		    || write(pasvfd, resbuf, reslen) != reslen) {
 			close(pasvfd);
 			close(localfd);
 			ftp->errnum = EFTP_SYSTEM;
@@ -530,7 +531,7 @@ int ftp_get(struct ftp *ftp, char *localname, char *remotename)
 	addr.sin_addr.s_addr = (h4 << 24) + (h3 << 16) + (h2 << 8) + h1;
 	addr.sin_port = htons(p1 * 256 + p2);
 
-	if (connect(pasvfd, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
+	if (connect(pasvfd, (struct sockaddr *) &addr, sizeof(addr)) == -1) {
 		ftp->errnum = EFTP_SYSTEM;
 		return -1;
 	}
@@ -552,7 +553,8 @@ int ftp_get(struct ftp *ftp, char *localname, char *remotename)
 
 	do {
 		reslen = recv(pasvfd, resbuf, sizeof(resbuf), 0);
-		if (reslen == -1 || write(localfd, resbuf, reslen) != reslen) {
+		if (reslen == -1
+		    || write(localfd, resbuf, reslen) != reslen) {
 			close(pasvfd);
 			close(localfd);
 			ftp->errnum = EFTP_SYSTEM;
