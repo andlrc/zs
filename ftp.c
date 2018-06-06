@@ -470,6 +470,12 @@ int ftp_put(struct ftp *ftp, char *localname, char *remotename)
 		return -1;
 	}
 
+	/* read STOR ack. reply */
+	ftp->cmd.tries = 0;
+	rc = ftp_cmdcontinue(ftp);
+	if (ftp_dfthandle(ftp, rc, 150) == -1)
+		return -1;
+
 	do {
 		reslen = read(localfd, resbuf, sizeof(resbuf));
 		if (reslen == -1 || write(pasvfd, resbuf, reslen) != reslen) {
@@ -483,22 +489,11 @@ int ftp_put(struct ftp *ftp, char *localname, char *remotename)
 	close(localfd);
 	close(pasvfd);
 
-	/* read STOR reply */
+	/* read STOR ok reply */
 	ftp->cmd.tries = 0;
 	rc = ftp_cmdcontinue(ftp);
-	while (rc != 226) {
-		switch (rc) {
-		case 0:
-		case 150:
-			rc = ftp_cmdcontinue(ftp);
-			break;
-		case -1:
-			return -1;
-		default:
-			ftp->errnum = EFTP_UNKWNRPLY;
-			return -1;
-		}
-	}
+	if (ftp_dfthandle(ftp, rc, 226) == -1)
+		return -1;
 
 	return 0;
 }
@@ -549,6 +544,12 @@ int ftp_get(struct ftp *ftp, char *localname, char *remotename)
 		return -1;
 	}
 
+	/* read RETR ack. reply */
+	ftp->cmd.tries = 0;
+	rc = ftp_cmdcontinue(ftp);
+	if (ftp_dfthandle(ftp, rc, 150) == -1)
+		return -1;
+
 	do {
 		reslen = recv(pasvfd, resbuf, sizeof(resbuf), 0);
 		if (reslen == -1 || write(localfd, resbuf, reslen) != reslen) {
@@ -565,19 +566,8 @@ int ftp_get(struct ftp *ftp, char *localname, char *remotename)
 	/* read RETR reply */
 	ftp->cmd.tries = 0;
 	rc = ftp_cmdcontinue(ftp);
-	while (rc != 226) {
-		switch (rc) {
-		case 0:
-		case 150:
-			rc = ftp_cmdcontinue(ftp);
-			break;
-		case -1:
-			return -1;
-		default:
-			ftp->errnum = EFTP_UNKWNRPLY;
-			return -1;
-		}
-	}
+	if (ftp_dfthandle(ftp, rc, 226) == -1)
+		return -1;
 
 	return 0;
 }
