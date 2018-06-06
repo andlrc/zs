@@ -2,6 +2,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <stdlib.h>
+#include <errno.h>
 
 #include "ftp.h"
 #include "zs.h"
@@ -165,7 +166,7 @@ const char *util_strerror(int errnum)
 {
 	switch (errnum) {
 	case EUTIL_SYSTEM:
-		return strerror(errnum);
+		return strerror(errno);
 	default:
 		return util_error_messages[errnum];
 	}
