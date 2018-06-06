@@ -67,7 +67,7 @@ static int downloadobj(struct sourceopt *sourceopt, struct ftp *ftp,
 		       struct object *obj)
 {
 	int rc;
-
+	int i, n, y;
 	char *lib, *type;
 
 	char remotename[PATH_MAX];
@@ -83,8 +83,8 @@ static int downloadobj(struct sourceopt *sourceopt, struct ftp *ftp,
 		return 1;
 	}
 
-	for (int i = 0, n = 0; i < Z_LIBLMAX; i++) {
-		for (int y = 0; y < Z_TYPMAX; y++, n++) {
+	for (i = 0, n = 0; i < Z_LIBLMAX; i++) {
+		for (y = 0; y < Z_TYPMAX; y++, n++) {
 			lib = *obj->lib ? obj->lib : sourceopt->libl[i];
 			type = *obj->type ? obj->type : sourceopt->types[y];
 
@@ -243,6 +243,7 @@ static int uploadfile(struct targetopt *targetopt, struct ftp *ftp,
 static int sourcemain(struct sourceopt *sourceopt, struct ftp *ftp)
 {
 	struct object *obj;
+	int i;
 
 	if (ftp_connect(ftp) == -1) {
 		print_error("failed to connect to source: %s\n",
@@ -250,7 +251,7 @@ static int sourcemain(struct sourceopt *sourceopt, struct ftp *ftp)
 		return 1;
 	}
 
-	for (int i = 0; i < Z_OBJMAX; i++) {
+	for (i = 0; i < Z_OBJMAX; i++) {
 		obj = &(sourceopt->objects[i]);
 		if (*obj->obj == '\0')
 			break;
@@ -290,7 +291,7 @@ static int targetmain(struct targetopt *targetopt, struct ftp *ftp)
 	line = NULL;
 	linesiz = 0;
 
-	for (int i = 0; getline(&line, &linesiz, fp) > 0; i++) {
+	while (getline(&line, &linesiz, fp) > 0) {
 		/* no more objects */
 		if (*line == '\n') {
 			break;
@@ -319,19 +320,20 @@ exit:	free(line);
 
 int main(int argc, char **argv)
 {
-	int c, rc, childrc;
-
-	program_name = strrchr(argv[0], '/');
-	if (program_name)
-		program_name++;
-	else
-		program_name = argv[0];
+	int c, rc, argind, i;
+	int childrc, pipefd[2];
 
 	struct sourceopt sourceopt;
 	struct targetopt targetopt;
 
 	struct ftp sourceftp;
 	struct ftp targetftp;
+
+	program_name = strrchr(argv[0], '/');
+	if (program_name)
+		program_name++;
+	else
+		program_name = argv[0];
 
 	ftp_init(&sourceftp);
 	ftp_init(&targetftp);
@@ -403,15 +405,16 @@ int main(int argc, char **argv)
 	}
 
 	/* slurp objects */
-	for (int i = optind, y = 0; i < argc; i++) {
-		rc = util_parseobj(&sourceopt.objects[y++], argv[i]);
+	for (argind = optind, i = 0; argind < argc; argind++, i++) {
+		if (i == Z_OBJMAX) {
+			print_error("maximum of %d objects reached\n",
+				    Z_OBJMAX);
+			break;
+		}
+		rc = util_parseobj(&sourceopt.objects[i], argv[argind]);
 		if (rc != 0)
 			print_error("failed to parse object: %s\n",
 				    util_strerror(rc));
-		if (y == Z_OBJMAX) {
-			print_error("maximum of %d objects reached\n",
-				    Z_OBJMAX);
-		}
 	}
 
 	if (*sourceopt.objects[0].obj == '\0') {
@@ -419,7 +422,6 @@ int main(int argc, char **argv)
 		return 2;
 	}
 
-	int pipefd[2];
 	if (pipe(pipefd) != 0) {
 		print_error("failed to create pipe: %s\n",
 			    strerror(errno));

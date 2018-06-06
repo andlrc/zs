@@ -363,7 +363,7 @@ int ftp_recvans(struct ftp *ftp, struct ftpansbuf *ansbuf)
 ssize_t ftp_recvline(struct ftp * ftp, char *resbuf, size_t ressiz)
 {
 	char recvbuf[BUFSIZ];
-	char *pbufnl;
+	char *pbufnl, *ptmp;
 	size_t nloffset;
 
 	/* allocate temporary storage */
@@ -395,13 +395,13 @@ ssize_t ftp_recvline(struct ftp * ftp, char *resbuf, size_t ressiz)
 		while (ftp->recvline.end - ftp->recvline.buffer +
 		       recvlen >= (ssize_t) ftp->recvline.size) {
 			ftp->recvline.size *= 2;
-			char *p = realloc(ftp->recvline.buffer, ftp->recvline.size);
-			if (!p) {
+			ptmp = realloc(ftp->recvline.buffer, ftp->recvline.size);
+			if (!ptmp) {
 				ftp->errnum = EFTP_SYSTEM;
 				return -1;
 			}
-			ftp->recvline.end = p + (ftp->recvline.end - ftp->recvline.buffer);
-			ftp->recvline.buffer = p;
+			ftp->recvline.end = ptmp + (ftp->recvline.end - ftp->recvline.buffer);
+			ftp->recvline.buffer = ptmp;
 		}
 
 		strncpy(ftp->recvline.end, recvbuf, recvlen);
