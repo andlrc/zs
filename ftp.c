@@ -332,6 +332,7 @@ int ftp_recvans(struct ftp *ftp, struct ftpansbuf *ansbuf)
 		return -1;
 	if (recvlen < 4) {
 		ftp->errnum = EFTP_UNKWNRPLY;
+		return -1;
 	}
 	/* assume that ftpansbuf.buffer is of size BUFSIZ */
 
