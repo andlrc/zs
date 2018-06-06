@@ -59,7 +59,8 @@ int util_parsecfg(struct ftp *ftp, char *filename)
 
 		if (strcmp(key, "server") == 0 || strcmp(key, "host") == 0) {
 			ftp_set_variable(ftp, FTP_VAR_HOST, pline);
-		} else if (strcmp(key, "user") == 0) {
+		} else if (strcmp(key, "user") == 0
+			   || strcmp(key, "username") == 0) {
 			ftp_set_variable(ftp, FTP_VAR_USER, pline);
 		} else if (strcmp(key, "password") == 0) {
 			ftp_set_variable(ftp, FTP_VAR_PASSWORD, pline);
