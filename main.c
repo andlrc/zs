@@ -84,7 +84,7 @@ static int downloadobj(struct sourceopt *sourceopt, struct ftp *ftp,
 	}
 
 	for (i = 0, n = 0; i < Z_LIBLMAX; i++) {
-		for (y = 0; y < Z_TYPMAX; y++, n++) {
+		for (y = 0; y < Z_TYPEMAX; y++, n++) {
 			lib = *obj->lib ? obj->lib : sourceopt->libl[i];
 			type = *obj->type ? obj->type : sourceopt->types[y];
 

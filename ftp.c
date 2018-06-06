@@ -11,17 +11,16 @@
 #include "ftp.h"
 
 static const char *ftp_error_messages[] = {
-	"success",
-	"destination buffer would overflow",
-	"timed out",
-	"unknown response status",
-	"bad response from server",
-	"no reply from server",
-	"multi line reply from server",
-	"not logged in",
-	"reading from socket would block",
-	"unknown variable",
-	"missing host"
+	"Success",
+	"Destination buffer would overflow",
+	"Timed Out",
+	"unknown reply status",
+	"Bad response from server",
+	"Multi line reply from server",
+	"Not Logged In",
+	"Reading from socket would block",
+	"Unknown variable",
+	"Missing host"
 };
 
 static void print_debug(struct ftp *ftp, enum ftp_verbosity verbosity,
@@ -63,16 +62,16 @@ int ftp_set_variable(struct ftp *ftp, enum ftp_variable var, char *val)
 {
 	switch (var) {
 	case FTP_VAR_HOST:
-		strncpy(ftp->server.host, val, FTP_HSTSIZ);
-		ftp->server.host[FTP_HSTSIZ - 1] = '\0';
+		strncpy(ftp->server.host, val, FTP_HOSTSIZ);
+		ftp->server.host[FTP_HOSTSIZ - 1] = '\0';
 		break;
 	case FTP_VAR_USER:
 		strncpy(ftp->server.user, val, FTP_USRSIZ);
 		ftp->server.user[FTP_USRSIZ - 1] = '\0';
 		break;
 	case FTP_VAR_PASSWORD:
-		strncpy(ftp->server.password, val, FTP_PWDSIZ);
-		ftp->server.password[FTP_PWDSIZ - 1] = '\0';
+		strncpy(ftp->server.password, val, FTP_PASSSIZ);
+		ftp->server.password[FTP_PASSSIZ - 1] = '\0';
 		break;
 	case FTP_VAR_PORT:
 		ftp->server.port = atoi(val);
@@ -85,7 +84,7 @@ int ftp_set_variable(struct ftp *ftp, enum ftp_variable var, char *val)
 		}
 		break;
 	default:
-		ftp->errnum = EFTP_UNKWNVAR;
+		ftp->errnum = EFTP_BADVAR;
 		return -1;
 	}
 
@@ -107,7 +106,7 @@ int ftp_connect(struct ftp *ftp)
 	hints.ai_flags = AI_NUMERICSERV;
 
 	if (*ftp->server.host == '\0') {
-		ftp->errnum = EFTP_MISHOST;
+		ftp->errnum = EFTP_NOHOST;
 		return -1;
 	}
 
@@ -250,7 +249,7 @@ int ftp_cmdcontinue_r(struct ftp *ftp, struct ftpansbuf *ansbuf)
 		return 0;
 	}
 
-	ftp->errnum = EFTP_TIMEOUT;
+	ftp->errnum = EFTP_TIMEDOUT;
 	return -1;
 }
 
@@ -270,12 +269,12 @@ int ftp_dfthandle_r(struct ftp *ftp, struct ftpansbuf *ftpans,
 			rc = ftp_cmdcontinue_r(ftp, ftpans);
 			break;
 		case 530:
-			ftp->errnum = EFTP_NOTLOGGEDIN;
+			ftp->errnum = EFTP_NOLOGIN;
 			return -1;
 		case -1:	/* timeout */
 			return -1;
 		default:
-			ftp->errnum = EFTP_UNKWNRPLY;
+			ftp->errnum = EFTP_BADRPLY;
 			return -1;
 		}
 	}
@@ -337,14 +336,14 @@ int ftp_recvans(struct ftp *ftp, struct ftpansbuf *ansbuf)
 	if (recvlen <= 0)
 		return -1;
 	if (recvlen < 4) {
-		ftp->errnum = EFTP_UNKWNRPLY;
+		ftp->errnum = EFTP_BADRPLY;
 		return -1;
 	}
 	/* assume that ftpansbuf.buffer is of size BUFSIZ */
 
 	rc = sscanf(buf, "%d", &ansbuf->reply);
 	if (rc == 0 || rc == EOF) {
-		ftp->errnum = EFTP_BADRES;
+		ftp->errnum = EFTP_BADRESP;
 		return -1;
 	}
 	/*
@@ -451,7 +450,7 @@ int ftp_put(struct ftp *ftp, char *localname, char *remotename)
 	if (sscanf(ftpans.buffer,
 		   "Entering Passive Mode (%d,%d,%d,%d,%d,%d).",
 		   &h1, &h2, &h3, &h4, &p1, &p2) != 6) {
-		ftp->errnum = EFTP_BADRES;
+		ftp->errnum = EFTP_BADRESP;
 		return -1;
 	}
 
@@ -527,7 +526,7 @@ int ftp_get(struct ftp *ftp, char *localname, char *remotename)
 	if (sscanf(ftpans.buffer,
 		   "Entering Passive Mode (%d,%d,%d,%d,%d,%d).",
 		   &h1, &h2, &h3, &h4, &p1, &p2) != 6) {
-		ftp->errnum = EFTP_BADRES;
+		ftp->errnum = EFTP_BADRESP;
 		return -1;
 	}
 

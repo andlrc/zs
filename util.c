@@ -9,11 +9,11 @@
 #include "util.h"
 
 static const char *util_error_messages[] = {
-	"success",
-	"missing value for option",
-	"unknown option",
-	"maximum libraries reached",
-	"maximum types reached"
+	"Success",
+	"Missing value for option",
+	"Unknown option",
+	"Maximum libraries reached",
+	"Maximum types reached"
 };
 
 int util_parsecfg(struct ftp *ftp, char *filename)
@@ -53,7 +53,7 @@ int util_parsecfg(struct ftp *ftp, char *filename)
 
 		key = strsep(&pline, " \t");
 		if (*pline == '\0') {
-			returncode = EUTIL_MISVAL;
+			returncode = EUTIL_NOVAL;
 			goto exit;
 		}
 
@@ -72,7 +72,7 @@ int util_parsecfg(struct ftp *ftp, char *filename)
 		} else if (strcmp(key, "port") == 0) {
 			ftp_set_variable(ftp, FTP_VAR_PORT, pline);
 		} else {
-			returncode = EUTIL_UNKNOWNKEY;
+			returncode = EUTIL_BADKEY;
 			goto exit;
 		}
 	}
@@ -91,7 +91,7 @@ int util_parselibl(struct sourceopt *sourceopt, char *optlibl)
 	p = strtok_r(optlibl, ",", &saveptr);
 	do {
 		if (i == Z_LIBLMAX) {
-			return EUTIL_MAXLIB;
+			return EUTIL_LIBOVERFLOW;
 		}
 
 		strncpy(sourceopt->libl[i], p, Z_LIBSIZ);
@@ -114,12 +114,12 @@ int util_parsetypes(struct sourceopt *sourceopt, char *opttypes)
 
 	p = strtok_r(opttypes, ",", &saveptr);
 	do {
-		if (i == Z_TYPMAX) {
-			return EUTIL_MAXTYP;
+		if (i == Z_TYPEMAX) {
+			return EUTIL_TYPEOVERFLOW;
 		}
 
-		strncpy(sourceopt->types[i], p, Z_TYPSIZ);
-		sourceopt->types[i][Z_TYPSIZ - 1] = '\0';
+		strncpy(sourceopt->types[i], p, Z_TYPESIZ);
+		sourceopt->types[i][Z_TYPESIZ - 1] = '\0';
 		i++;
 	} while ((p = strtok_r(NULL, ",", &saveptr)) != NULL);
 
@@ -155,8 +155,8 @@ int util_parseobj(struct object *obj, char *optobj)
 	/* $type */
 	p = strtok_r(NULL, ".", &saveptr);
 	if (p != NULL) {
-		strncpy(obj->type, p, Z_TYPSIZ);
-		obj->type[Z_TYPSIZ - 1] = '\0';
+		strncpy(obj->type, p, Z_TYPESIZ);
+		obj->type[Z_TYPESIZ - 1] = '\0';
 	}
 
 	return 0;

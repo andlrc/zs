@@ -6,15 +6,14 @@
 enum ftp_errors {
 	FTP_SUCCESS = 0,
 	EFTP_OVERFLOW,
-	EFTP_TIMEOUT,
-	EFTP_UNKWNRPLY,
-	EFTP_BADRES,
-	EFTP_NOREPLY,
-	EFTP_CONTREPLY,
-	EFTP_NOTLOGGEDIN,
+	EFTP_TIMEDOUT,
+	EFTP_BADRPLY,
+	EFTP_BADRESP,
+	EFTP_CONTREPLY, // FIXME
+	EFTP_NOLOGIN,
 	EFTP_WOULDBLOCK,
-	EFTP_UNKWNVAR,
-	EFTP_MISHOST,
+	EFTP_BADVAR,
+	EFTP_NOHOST,
 
 	/* system errors */
 	EFTP_SYSTEM = 99,
@@ -44,15 +43,15 @@ enum ftp_variable {
 	FTP_VAR_PORT
 };
 
-#define FTP_HSTSIZ	256
+#define FTP_HOSTSIZ	256
 #define FTP_USRSIZ	128
-#define FTP_PWDSIZ	128
+#define FTP_PASSSIZ	128
 
 struct ftpserver {
-	char host[FTP_HSTSIZ];
+	char host[FTP_HOSTSIZ];
 	int port;
 	char user[FTP_USRSIZ];
-	char password[FTP_PWDSIZ];
+	char password[FTP_PASSSIZ];
 };
 
 struct ftp {
