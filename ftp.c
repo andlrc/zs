@@ -307,10 +307,10 @@ ssize_t ftp_recv(struct ftp *ftp, void *buf, size_t len, int flags)
 	rc = recv(ftp->sock, buf, len, flags);
 	switch (rc) {
 	case 0:
-		print_debug(ftp, FTP_VERBOSE_MORE, "::RECV: [NOTHING]");
+		print_debug(ftp, FTP_VERBOSE_MORE, "::RECV: [NOTHING]\n");
 		break;
 	case -1:
-		print_debug(ftp, FTP_VERBOSE_MORE, "::RECV: [%s]",
+		print_debug(ftp, FTP_VERBOSE_MORE, "::RECV: [%s]\n",
 			    strerror(errno));
 		break;
 	default:
