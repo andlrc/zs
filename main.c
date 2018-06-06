@@ -272,7 +272,7 @@ static int targetmain(struct targetopt *targetopt, struct ftp *ftp)
 
 int main(int argc, char **argv)
 {
-	int c, rc;
+	int c, rc, childrc;
 
 	program_name = strrchr(argv[0], '/');
 	if (program_name)
@@ -395,7 +395,14 @@ int main(int argc, char **argv)
 		/* cleanup */
 		close(sourceopt.pipe);
 		ftp_close(&sourceftp);
-		wait(NULL);
+		wait(&childrc);
+		if (WIFEXITED(childrc)) {
+			if (rc == 0) {
+				rc = WEXITSTATUS(childrc);
+			}
+		} else {
+			rc = 1;
+		}
 		return rc;
 		break;
 	}
