@@ -120,7 +120,8 @@ static int downloadobj(struct sourceopt *sourceopt, struct ftp *ftp,
 			break;
 	}
 
-	strcpy(remotename, "/tmp/zs.savf");
+	snprintf(remotename, sizeof(remotename), "/tmp/zs-%d-put.savf",
+		 getpid());
 	rc = ftp_cmd(ftp, "RCMD CPYTOSTMF FROMMBR('/QSYS.LIB/QTEMP.LIB/ZS.FILE') TOSTMF('%s') STMFOPT(*REPLACE)\r\n",
 		     remotename);
 	if (ftp_dfthandle(ftp, rc, 250) == -1) {
@@ -154,6 +155,13 @@ static int downloadobj(struct sourceopt *sourceopt, struct ftp *ftp,
 		return 1;
 	}
 
+	rc = ftp_cmd(ftp, "DELETE %s\n", remotename);
+	if (ftp_dfthandle(ftp, rc, 250) == -1) {
+		print_error("failed to remove tempfile: %s\n",
+			    ftp_strerror(ftp));
+		return 1;
+	}
+
 	len = snprintf(buf, sizeof(buf), "%s:%s\n", lib, localname);
 	if (write(sourceopt->pipe, buf, len) == -1) {
 		print_error("failed to write to target process\n");
@@ -169,7 +177,8 @@ static int uploadfile(struct targetopt *targetopt, struct ftp *ftp,
 	char remotename[PATH_MAX];
 	int rc;
 
-	strcpy(remotename, "/tmp/zs.savf");
+	snprintf(remotename, sizeof(remotename), "/tmp/zs-%d-get.savf",
+		 getpid());
 
 	printf("uploading %s to %s\n", localname, remotename);
 
@@ -183,6 +192,13 @@ static int uploadfile(struct targetopt *targetopt, struct ftp *ftp,
 		     remotename);
 	if (ftp_dfthandle(ftp, rc, 250) == -1) {
 		print_error("failed to copy from stream file: %s\n",
+			    ftp_strerror(ftp));
+		return 1;
+	}
+
+	rc = ftp_cmd(ftp, "DELETE %s\n", remotename);
+	if (ftp_dfthandle(ftp, rc, 250) == -1) {
+		print_error("failed to remove tempfile: %s\n",
 			    ftp_strerror(ftp));
 		return 1;
 	}
