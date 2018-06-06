@@ -8,6 +8,7 @@
 #define Z_LIBSIZ	11
 #define Z_OBJSIZ	11
 #define Z_TYPESIZ	11
+#define Z_RLSSIZ	11
 
 struct object {
 	char lib[Z_LIBSIZ];
@@ -17,6 +18,7 @@ struct object {
 
 struct sourceopt {
 	int pipe;
+	char release[Z_RLSSIZ];
 	char libl[Z_LIBLMAX][Z_LIBSIZ];
 	struct object objects[Z_OBJMAX];
 	char types[Z_TYPEMAX][Z_TYPESIZ];

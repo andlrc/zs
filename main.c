@@ -102,8 +102,8 @@ static int downloadobj(struct sourceopt *sourceopt, struct ftp *ftp,
 			}
 
 			/* try to save the object located in $lib */
-			rc = ftp_cmd(ftp, "RCMD SAVOBJ OBJ(%s) OBJTYPE(*%s) LIB(%s) DEV(*SAVF) SAVF(QTEMP/ZS) DTACPR(*HIGH)\r\n",
-				     obj->obj, type, lib);
+			rc = ftp_cmd(ftp, "RCMD SAVOBJ OBJ(%s) OBJTYPE(*%s) LIB(%s) TGTRLS(%s) DEV(*SAVF) SAVF(QTEMP/ZS) DTACPR(*HIGH)\r\n",
+				     obj->obj, type, lib, sourceopt->release);
 			while (rc != 250 && rc != 550) {
 				switch (rc) {
 				case 0:
@@ -134,7 +134,7 @@ static int downloadobj(struct sourceopt *sourceopt, struct ftp *ftp,
 			break;
 	}
 
-	print_error("object %s not found\n", obj->obj);
+	print_error("object %s not saved\n", obj->obj);
 	return 1;
 
       upload:
@@ -343,7 +343,10 @@ int main(int argc, char **argv)
 	memset(&sourceopt, 0, sizeof(sourceopt));
 	memset(&targetopt, 0, sizeof(targetopt));
 
-	while ((c = getopt(argc, argv, "Vhvs:u:p:l:t:m:c:S:U:P:L:M:C:")) != -1) {
+	strcpy(sourceopt.release, "*CURRENT");
+
+	while ((c = getopt(argc, argv,
+			   "Vhvs:u:p:l:t:m:r:c:S:U:P:L:M:C:")) != -1) {
 		switch (c) {
 		case 'V':	/* version */
 			print_version();
@@ -378,6 +381,10 @@ int main(int argc, char **argv)
 			break;
 		case 'm':	/* source max tries */
 			ftp_set_variable(&sourceftp, FTP_VAR_MAXTRIES, optarg);
+			break;
+		case 'r':	/* source release version */
+			strncpy(sourceopt.release, optarg, Z_RLSSIZ);
+			sourceopt.release[Z_RLSSIZ - 1] = '\0';
 			break;
 		case 'c':	/* source config */
 			rc = util_parsecfg(&sourceftp, optarg);
