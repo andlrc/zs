@@ -20,7 +20,8 @@ static const char *ftp_error_messages[] = {
 	"multi line reply from server",
 	"not logged in",
 	"reading from socket would block",
-	"unknown variable"
+	"unknown variable",
+	"missing host"
 };
 
 static void print_debug(struct ftp *ftp, enum ftp_verbosity verbosity,
@@ -62,15 +63,15 @@ int ftp_set_variable(struct ftp *ftp, enum ftp_variable var, char *val)
 {
 	switch (var) {
 	case FTP_VAR_HOST:
-		memcpy(ftp->server.host, val, FTP_HSTSIZ);
+		strncpy(ftp->server.host, val, FTP_HSTSIZ);
 		ftp->server.host[FTP_HSTSIZ - 1] = '\0';
 		break;
 	case FTP_VAR_USER:
-		memcpy(ftp->server.user, val, FTP_USRSIZ);
+		strncpy(ftp->server.user, val, FTP_USRSIZ);
 		ftp->server.user[FTP_USRSIZ - 1] = '\0';
 		break;
 	case FTP_VAR_PASSWORD:
-		memcpy(ftp->server.password, val, FTP_PWDSIZ);
+		strncpy(ftp->server.password, val, FTP_PWDSIZ);
 		ftp->server.password[FTP_PWDSIZ - 1] = '\0';
 		break;
 	case FTP_VAR_PORT:
@@ -104,6 +105,11 @@ int ftp_connect(struct ftp *ftp)
 	hints.ai_family = AF_UNSPEC;
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_flags = AI_NUMERICSERV;
+
+	if (*ftp->server.host == '\0') {
+		ftp->errnum = EFTP_MISHOST;
+		return -1;
+	}
 
 	switch (getaddrinfo(ftp->server.host, sport, &hints, &res)) {
 	case EAI_SYSTEM:
@@ -219,9 +225,10 @@ int ftp_cmd_r(struct ftp *ftp, struct ftpansbuf *ftpans, char *format, ...)
 
 int ftp_cmdcontinue(struct ftp *ftp)
 {
-	struct ftpansbuf ansbuf;
+	struct ftpansbuf ftpans;
+	memset(&ftpans, 0, sizeof(struct ftpansbuf));
 
-	return ftp_cmdcontinue_r(ftp, &ansbuf);
+	return ftp_cmdcontinue_r(ftp, &ftpans);
 }
 
 int ftp_cmdcontinue_r(struct ftp *ftp, struct ftpansbuf *ansbuf)
@@ -250,6 +257,7 @@ int ftp_cmdcontinue_r(struct ftp *ftp, struct ftpansbuf *ansbuf)
 int ftp_dfthandle(struct ftp *ftp, int rc, int reply)
 {
 	struct ftpansbuf ftpans;
+	memset(&ftpans, 0, sizeof(struct ftpansbuf));
 	return ftp_dfthandle_r(ftp, &ftpans, rc, reply);
 }
 
@@ -435,6 +443,7 @@ int ftp_put(struct ftp *ftp, char *localname, char *remotename)
 	char resbuf[BUFSIZ];
 	ssize_t reslen;
 
+	memset(&ftpans, 0, sizeof(struct ftpansbuf));
 	rc = ftp_cmd_r(ftp, &ftpans, "PASV\r\n");
 	if (ftp_dfthandle_r(ftp, &ftpans, rc, 227) == -1)
 		return -1;
@@ -510,6 +519,7 @@ int ftp_get(struct ftp *ftp, char *localname, char *remotename)
 	char resbuf[BUFSIZ];
 	ssize_t reslen;
 
+	memset(&ftpans, 0, sizeof(struct ftpansbuf));
 	rc = ftp_cmd_r(ftp, &ftpans, "PASV\r\n");
 	if (ftp_dfthandle_r(ftp, &ftpans, rc, 227) == -1)
 		return -1;

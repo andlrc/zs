@@ -248,11 +248,15 @@ static int sourcemain(struct sourceopt *sourceopt, struct ftp *ftp)
 
 static int targetmain(struct targetopt *targetopt, struct ftp *ftp)
 {
+	int returncode;
+	int fd;
 	FILE *fp;
 	char *line;
 	char *lib, *localname;
 	char *saveptr;
 	size_t linesiz;
+
+	returncode = 0;
 
 	if (ftp_connect(ftp) == -1) {
 		print_error("failed to connect to target: %s\n",
@@ -260,7 +264,13 @@ static int targetmain(struct targetopt *targetopt, struct ftp *ftp)
 		return 1;
 	}
 
-	fp = fdopen(targetopt->pipe, "r");
+	fd = dup(targetopt->pipe);
+	if (fd == -1) {
+		print_error("failed to dup pipe: %s\n", strerror(errno));
+		return 1;
+	}
+
+	fp = fdopen(fd, "r");
 	line = NULL;
 	linesiz = 0;
 
@@ -275,17 +285,20 @@ static int targetmain(struct targetopt *targetopt, struct ftp *ftp)
 
 		if (lib == NULL || localname == NULL) {
 			print_error("failed to understand payload\n");
-			return 1;
+			returncode = 1;
+			goto exit;
 		}
 
-		if (uploadfile(targetopt, ftp, lib, localname) != 0)
-			return 1;
+		if (uploadfile(targetopt, ftp, lib, localname) != 0) {
+			returncode = 1;
+			goto exit;
+		}
 	}
 
-	free(line);
-	ftp_close(ftp);
+exit:	free(line);
+	fclose(fp);
 
-	return 0;
+	return returncode;
 }
 
 int main(int argc, char **argv)

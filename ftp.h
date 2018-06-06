@@ -14,6 +14,7 @@ enum ftp_errors {
 	EFTP_NOTLOGGEDIN,
 	EFTP_WOULDBLOCK,
 	EFTP_UNKWNVAR,
+	EFTP_MISHOST,
 
 	/* system errors */
 	EFTP_SYSTEM = 99,

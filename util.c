@@ -17,6 +17,7 @@ static const char *util_error_messages[] = {
 int util_parsecfg(struct ftp *ftp, char *filename)
 {
 	/* ($option <sp> $value <nl>)* */
+	int returncode;
 	FILE *fp;
 	char *line, *pline;
 	char *key;
@@ -38,6 +39,7 @@ int util_parsecfg(struct ftp *ftp, char *filename)
 		return EUTIL_SYSTEM;
 	}
 
+	returncode = 0;
 	while (getline(&line, &linesiz, fp) > 0) {
 		pline = line;
 
@@ -49,7 +51,8 @@ int util_parsecfg(struct ftp *ftp, char *filename)
 
 		key = strsep(&pline, " \t");
 		if (*pline == '\0') {
-			return EUTIL_MISVAL;
+			returncode = EUTIL_MISVAL;
+			goto exit;
 		}
 
 		while (isspace(*pline))
@@ -67,13 +70,14 @@ int util_parsecfg(struct ftp *ftp, char *filename)
 		} else if (strcmp(key, "port") == 0) {
 			ftp_set_variable(ftp, FTP_VAR_PORT, pline);
 		} else {
-			return EUTIL_UNKNOWNKEY;
+			returncode = EUTIL_UNKNOWNKEY;
+			goto exit;
 		}
 	}
 
-	free(line);
+exit:	free(line);
 	fclose(fp);
-	return 0;
+	return returncode;
 }
 
 int util_parselibl(struct sourceopt *sourceopt, char *optlibl)
