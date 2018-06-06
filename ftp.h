@@ -40,7 +40,8 @@ enum ftp_variable {
 	FTP_VAR_USER,
 	FTP_VAR_PASSWORD,
 	FTP_VAR_VERBOSE,
-	FTP_VAR_PORT
+	FTP_VAR_PORT,
+	FTP_VAR_MAXTRIES
 };
 
 #define FTP_HOSTSIZ	256
@@ -52,6 +53,7 @@ struct ftpserver {
 	int port;
 	char user[FTP_USRSIZ];
 	char password[FTP_PASSSIZ];
+	int maxtries;
 };
 
 struct ftp {

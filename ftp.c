@@ -47,6 +47,7 @@ void ftp_init(struct ftp *ftp)
 	memset(ftp, 0, sizeof(struct ftp));
 	ftp->recvline.buffer = NULL;
 	ftp->server.port = FTP_PORT;
+	ftp->server.maxtries = 100;
 }
 
 void ftp_close(struct ftp *ftp)
@@ -64,31 +65,35 @@ int ftp_set_variable(struct ftp *ftp, enum ftp_variable var, char *val)
 	case FTP_VAR_HOST:
 		strncpy(ftp->server.host, val, FTP_HOSTSIZ);
 		ftp->server.host[FTP_HOSTSIZ - 1] = '\0';
-		break;
+		return 0;
 	case FTP_VAR_USER:
 		strncpy(ftp->server.user, val, FTP_USRSIZ);
 		ftp->server.user[FTP_USRSIZ - 1] = '\0';
-		break;
+		return 0;
 	case FTP_VAR_PASSWORD:
 		strncpy(ftp->server.password, val, FTP_PASSSIZ);
 		ftp->server.password[FTP_PASSSIZ - 1] = '\0';
-		break;
+		return 0;
 	case FTP_VAR_PORT:
 		ftp->server.port = atoi(val);
-		break;
+		return 0;
 	case FTP_VAR_VERBOSE:
 		if (*val == '+' || *val == '-') {
 			ftp->verbosity += atoi(val);
 		} else {
 			ftp->verbosity = atoi(val);
 		}
-		break;
-	default:
-		ftp->errnum = EFTP_BADVAR;
-		return -1;
+		return 0;
+	case FTP_VAR_MAXTRIES:
+		if (*val == '+' || *val == '-') {
+			ftp->server.maxtries += atoi(val);
+		} else {
+			ftp->server.maxtries = atoi(val);
+		}
 	}
 
-	return 0;
+	ftp->errnum = EFTP_BADVAR;
+	return -1;
 }
 
 int ftp_connect(struct ftp *ftp)
@@ -238,7 +243,7 @@ int ftp_cmdcontinue_r(struct ftp *ftp, struct ftpansbuf *ansbuf)
 
 	nanosleep(&sleeper, NULL);
 
-	if (ftp->cmd.tries++ < 100) {
+	if (ftp->cmd.tries++ < ftp->server.maxtries) {
 		if (ftp_recvans(ftp, ansbuf) == 0) {
 			if (ansbuf->continues) {
 				ftp->errnum = EFTP_CONTREPLY;

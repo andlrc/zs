@@ -29,16 +29,18 @@ static void print_help(void)
 	       "  -u user       set source user\n"
 	       "  -p port       set source port\n"
 	       "  -l libl       set source library list\n"
-	       "                comma seperated list of libraries\n"
+	       "                comma separated list of libraries\n"
 	       "  -t types      set type list\n"
-	       "                comma seperated list of types\n"
+	       "                comma separated list of types\n"
+	       "  -m tries      set maximum tries for source to respond\n"
 	       "  -c file       source config file\n"
 	       "\n"
 	       "  -S host       set target host\n"
 	       "  -U user       set target user\n"
 	       "  -P port       set target port\n"
+	       "  -L lib        set target destination library\n"
+	       "  -M tries      set maximum tries for target to respond\n"
 	       "  -C file       source config file\n"
-	       "  -L            set target destination library\n"
 	       "\n"
 	       "  -v            level of verbosity, can be set multiple times\n"
 	       "  -V            output version information and exit\n"
@@ -341,59 +343,65 @@ int main(int argc, char **argv)
 	memset(&sourceopt, 0, sizeof(sourceopt));
 	memset(&targetopt, 0, sizeof(targetopt));
 
-	while ((c = getopt(argc, argv, "Vhvs:u:p:l:t:c:S:U:P:C:L:")) != -1) {
+	while ((c = getopt(argc, argv, "Vhvs:u:p:l:t:m:c:S:U:P:L:M:C:")) != -1) {
 		switch (c) {
-		case 'V':
+		case 'V':	/* version */
 			print_version();
 			return 0;
-		case 'h':
+		case 'h':	/* help */
 			print_help();
 			return 0;
-		case 'v':
+		case 'v':	/* verbosity */
 			ftp_set_variable(&sourceftp, FTP_VAR_VERBOSE, "+1");
 			ftp_set_variable(&targetftp, FTP_VAR_VERBOSE, "+1");
 			break;
-		case 's':
+		case 's':	/* source host */
 			ftp_set_variable(&sourceftp, FTP_VAR_HOST, optarg);
 			break;
-		case 'u':
+		case 'u':	/* source user */
 			ftp_set_variable(&sourceftp, FTP_VAR_USER, optarg);
 			break;
-		case 'p':
+		case 'p':	/* source port */
 			ftp_set_variable(&sourceftp, FTP_VAR_PORT, optarg);
 			break;
-		case 'l':
+		case 'l':	/* source libl */
 			rc = util_parselibl(&sourceopt, optarg);
 			if (rc != 0)
 				print_error("failed to parse library list: %s\n",
 					    util_strerror(rc));
 			break;
-		case 't':
+		case 't':	/* source types */
 			rc = util_parsetypes(&sourceopt, optarg);
 			if (rc != 0)
 				print_error("failed to parse types: %s\n",
 					    util_strerror(rc));
 			break;
-		case 'c':
+		case 'm':	/* source max tries */
+			ftp_set_variable(&sourceftp, FTP_VAR_MAXTRIES, optarg);
+			break;
+		case 'c':	/* source config */
 			rc = util_parsecfg(&sourceftp, optarg);
 			if (rc != 0)
 				print_error("failed to parse config file: %s\n",
 					    util_strerror(rc));
 			break;
-		case 'S':
+		case 'S':	/* target host */
 			ftp_set_variable(&targetftp, FTP_VAR_HOST, optarg);
 			break;
-		case 'U':
+		case 'U':	/* target user */
 			ftp_set_variable(&targetftp, FTP_VAR_USER, optarg);
 			break;
-		case 'P':
+		case 'P':	/* target port */
 			ftp_set_variable(&targetftp, FTP_VAR_PORT, optarg);
 			break;
-		case 'L':
+		case 'L':	/* target lib */
 			strncpy(targetopt.lib, optarg, Z_LIBSIZ);
 			targetopt.lib[Z_LIBSIZ - 1] = '\0';
 			break;
-		case 'C':
+		case 'M':	/* target max tries */
+			ftp_set_variable(&targetftp, FTP_VAR_MAXTRIES, optarg);
+			break;
+		case 'C':	/* target config */
 			rc = util_parsecfg(&targetftp, optarg);
 			if (rc != 0)
 				print_error("failed to parse config file: %s\n",

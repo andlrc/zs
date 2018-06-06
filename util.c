@@ -71,6 +71,9 @@ int util_parsecfg(struct ftp *ftp, char *filename)
 			ftp_set_variable(ftp, FTP_VAR_PASSWORD, pline);
 		} else if (strcmp(key, "port") == 0) {
 			ftp_set_variable(ftp, FTP_VAR_PORT, pline);
+		} else if (strcmp(key, "tries") == 0
+			   || strcmp(key, "maxtries") == 0) {
+			ftp_set_variable(ftp, FTP_VAR_MAXTRIES, pline);
 		} else {
 			returncode = EUTIL_BADKEY;
 			goto exit;
