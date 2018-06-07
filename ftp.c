@@ -246,7 +246,7 @@ int ftp_cmdcontinue_r(struct ftp *ftp, struct ftpansbuf *ansbuf)
 	if (ftp->cmd.tries++ < ftp->server.maxtries) {
 		if (ftp_recvans(ftp, ansbuf) == 0) {
 			if (ansbuf->continues) {
-				ftp->errnum = EFTP_CONTREPLY;
+				ftp->errnum = EFTP_CONTRESP;
 				return 0;
 			}
 			return ansbuf->reply;
