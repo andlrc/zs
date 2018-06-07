@@ -134,7 +134,7 @@ static int downloadobj(struct sourceopt *sourceopt, struct ftp *ftp,
 			break;
 	}
 
-	print_error("object %s not saved\n", obj->obj);
+	print_error("failed to save object '%s'\n", obj->obj);
 	return 1;
 
       upload:
@@ -433,7 +433,7 @@ int main(int argc, char **argv)
 	}
 
 	if (*sourceopt.objects[0].obj == '\0') {
-		print_error("missing an object\n");
+		print_error("missing object\n");
 		return 2;
 	}
 
