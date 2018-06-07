@@ -9,7 +9,7 @@
 #include <getopt.h>
 
 char *program_name;
-#define PROGRAM_VERSION	"1.4"
+#define PROGRAM_VERSION	"1.5"
 
 #include "ftp.h"
 #include "zs.h"
@@ -194,6 +194,8 @@ static int uploadfile(struct targetopt *targetopt, struct ftp *ftp,
 		      char *lib, char *localname)
 {
 	char remotename[PATH_MAX];
+	struct ftpansbuf ftpans;
+	int rstcnt;
 	int rc;
 
 	/* TODO: figure out a way to guarentee an unique file on the server */
@@ -224,12 +226,23 @@ static int uploadfile(struct targetopt *targetopt, struct ftp *ftp,
 		return 1;
 	}
 
-	rc = ftp_cmd(ftp, "RCMD RSTOBJ OBJ(*ALL) SAVLIB(%s) DEV(*SAVF) SAVF(QTEMP/ZS) MBROPT(*ALL) RSTLIB(%s)\r\n",
-		     lib, targetopt->lib);
-	if (ftp_dfthandle(ftp, rc, 250) == -1) {
-		print_error("failed to restore object: %s\n",
-			    ftp_strerror(ftp));
-		return 1;
+	memset(&ftpans, 0, sizeof(struct ftpansbuf));
+	rc = ftp_cmd_r(ftp, &ftpans,
+		       "RCMD RSTOBJ OBJ(*ALL) SAVLIB(%s) DEV(*SAVF) SAVF(QTEMP/ZS) MBROPT(*ALL) RSTLIB(%s)\r\n",
+		       lib, targetopt->lib);
+	if (ftp_dfthandle_r(ftp, &ftpans, rc, 250) == -1) {
+		/*
+		 * reply = 550 but the object is still still restored, this can
+		 * be due to authentication on the object, etc.
+		 */
+		if (ftpans.reply != 550
+		    || sscanf(ftpans.buffer, "%d objects restored.",
+			      &rstcnt) != 1
+		    || rstcnt != 1) {
+			print_error("failed to restore object: %s\n",
+				    ftp_strerror(ftp));
+			return 1;
+		}
 	}
 
 	rc = ftp_cmd(ftp, "RCMD DLTF FILE(QTEMP/ZS)\r\n");
