@@ -9,7 +9,7 @@
 #include <getopt.h>
 
 char *program_name;
-#define PROGRAM_VERSION	"1.3"
+#define PROGRAM_VERSION	"1.4"
 
 #include "ftp.h"
 #include "zs.h"

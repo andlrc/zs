@@ -90,6 +90,7 @@ int ftp_set_variable(struct ftp *ftp, enum ftp_variable var, char *val)
 		} else {
 			ftp->server.maxtries = atoi(val);
 		}
+		return 0;
 	}
 
 	ftp->errnum = EFTP_BADVAR;
