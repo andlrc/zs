@@ -475,7 +475,7 @@ int ftp_put(struct ftp *ftp, char *localname, char *remotename)
 		return -1;
 	}
 
-	snprintf(buf, sizeof(buf), "STOR %s\r\n", remotename);
+	snprintf(buf, sizeof(buf), "STOU %s\r\n", remotename);
 	rc = ftp_write(ftp, buf, strlen(buf));
 
 	localfd = open(localname, O_RDONLY);
@@ -484,11 +484,17 @@ int ftp_put(struct ftp *ftp, char *localname, char *remotename)
 		return -1;
 	}
 
-	/* read STOR ack. reply */
+	/* read STOU ack. reply */
 	ftp->cmd.tries = 0;
-	rc = ftp_cmdcontinue(ftp);
-	if (ftp_dfthandle(ftp, rc, 150) == -1)
+	memset(&ftpans, 0, sizeof(struct ftpansbuf));
+	rc = ftp_cmdcontinue_r(ftp, &ftpans);
+	if (ftp_dfthandle_r(ftp, &ftpans, rc, 150) == -1)
 		return -1;
+	if (sscanf(ftpans.buffer, "Sending file to %s",
+		   remotename) != 1) {
+		ftp->errnum = EFTP_BADRESP;
+		return -1;
+	}
 
 	do {
 		reslen = read(localfd, resbuf, sizeof(resbuf));

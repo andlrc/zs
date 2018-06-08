@@ -9,7 +9,7 @@
 #include <getopt.h>
 
 char *program_name;
-#define PROGRAM_VERSION	"1.5"
+#define PROGRAM_VERSION	"1.6"
 
 #include "ftp.h"
 #include "zs.h"
@@ -70,6 +70,7 @@ static int downloadobj(struct sourceopt *sourceopt, struct ftp *ftp,
 {
 	int rc;
 	int i, n, y;
+	int dltries;
 	char *lib, *type;
 
 	char remotename[PATH_MAX];
@@ -118,7 +119,7 @@ static int downloadobj(struct sourceopt *sourceopt, struct ftp *ftp,
 
 			/* object was copied */
 			if (rc == 250)
-				goto upload;
+				goto download;
 
 			/* don't check all provided types, (object have own) */
 			if (*obj->type)
@@ -137,13 +138,16 @@ static int downloadobj(struct sourceopt *sourceopt, struct ftp *ftp,
 	print_error("failed to save object '%s'\n", obj->obj);
 	return 1;
 
-      upload:
-	/* TODO: figure out a way to guarentee an unique file on the server */
-	snprintf(remotename, sizeof(remotename), "/tmp/zs-%d-get.savf",
-		 getpid());
-	rc = ftp_cmd(ftp, "RCMD CPYTOSTMF FROMMBR('/QSYS.LIB/QTEMP.LIB/ZS.FILE') TOSTMF('%s') STMFOPT(*REPLACE)\r\n",
-		     remotename);
-	if (ftp_dfthandle(ftp, rc, 250) == -1) {
+      download:
+	for (dltries = 0; dltries < 50; dltries++) {
+		strcpy(remotename, "/tmp/zs-XXXXXX");
+		mktemp(remotename);
+		rc = ftp_cmd(ftp, "RCMD CPYTOSTMF FROMMBR('/QSYS.LIB/QTEMP.LIB/ZS.FILE') TOSTMF('%s')\r\n",
+			     remotename);
+		if (ftp_dfthandle(ftp, rc, 250) == 0)
+			break;
+	}
+	if (dltries == 50) {
 		print_error("failed to copy to stream file: %s\n",
 			    ftp_strerror(ftp));
 		return 1;
@@ -198,9 +202,8 @@ static int uploadfile(struct targetopt *targetopt, struct ftp *ftp,
 	int rstcnt;
 	int rc;
 
-	/* TODO: figure out a way to guarentee an unique file on the server */
-	snprintf(remotename, sizeof(remotename), "/tmp/zs-%d-put.savf",
-		 getpid());
+	strcpy(remotename, "/tmp/zs-XXXXXX");
+	mktemp(remotename);
 
 	printf("uploading %s to %s\n", localname, remotename);
 
