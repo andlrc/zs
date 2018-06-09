@@ -9,7 +9,7 @@
 #include <getopt.h>
 
 char *program_name;
-#define PROGRAM_VERSION	"1.6"
+#define PROGRAM_VERSION	"1.7"
 
 #include "ftp.h"
 #include "zs.h"
@@ -169,7 +169,7 @@ static int downloadobj(struct sourceopt *sourceopt, struct ftp *ftp,
 	}
 	close(destfd);
 
-	printf("downloading %s/%s*%s to %s\n", lib, obj->obj, obj->type,
+	printf("downloading %s/%s*%s to %s\n", lib, obj->obj, type,
 	       localname);
 
 	if (ftp_get(ftp, localname, remotename) != 0) {
