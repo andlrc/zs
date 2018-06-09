@@ -9,7 +9,7 @@
 #include <getopt.h>
 
 char *program_name;
-#define PROGRAM_VERSION	"1.8"
+#define PROGRAM_VERSION	"1.9"
 
 #include "ftp.h"
 #include "zs.h"
@@ -140,8 +140,8 @@ static int downloadobj(struct sourceopt *sourceopt, struct ftp *ftp,
 
       download:
 	for (dltries = 0; dltries < 50; dltries++) {
-		strcpy(remotename, "/tmp/zs-XXXXXX");
-		mktemp(remotename);
+		snprintf(remotename, sizeof(remotename),
+			 "/tmp/zs-get%d", dltries);
 		rc = ftp_cmd(ftp, "RCMD CPYTOSTMF FROMMBR('/QSYS.LIB/QTEMP.LIB/ZS.FILE') TOSTMF('%s')\r\n",
 			     remotename);
 		if (ftp_dfthandle(ftp, rc, 250) == 0)
@@ -202,9 +202,8 @@ static int uploadfile(struct targetopt *targetopt, struct ftp *ftp,
 	int rstcnt;
 	int rc;
 
-	strcpy(remotename, "/tmp/zs-XXXXXX");
-	mktemp(remotename);
-
+	/* ftp_put can change remotename */
+	strcpy(remotename, "/tmp/zs-put");
 	printf("uploading %s to %s\n", localname, remotename);
 
 	if (ftp_put(ftp, localname, remotename) != 0) {
