@@ -186,5 +186,77 @@ or
 .I lib4/obj2
 .I obj3*PGM
 .RE
+.SH "CONFIG FORMAT"
+The config file takes the following format:
+.PP
+.RS
+.I KEY
+.B <SP>
+.I VALUE
+.RE
+.PP
+.RS 0
+.IP "\-" 2
+.I KEY
+the following keys are supported
+.RS 2
+.IP "\-" 2
+.B server
+synonym for
+.B host
+.IP "\-" 2
+.B host
+.IP "\-" 2
+.B user
+.IP "\-" 2
+.B password
+.IP "\-" 2
+.B port
+.IP "\-" 2
+.B tries
+synonym for
+.B maxtries
+.IP "\-" 2
+.B maxtries
+.RE
+.IP "\-" 2
+.B <SP>
+one or more space characters;
+.BR 0x20 ,
+or
+.BR 0x09 .
+.IP "\-" 2
+.I VALUE
+value will be read until EOL
+.RE
+.PP
+A comment starts with
+.BR # ,
+or
+.BR ; .
+.SS Example
+Example of a config file:
+.PP
+.RS
+.B #
+this is a comment
+.br
+.B ;
+this is also a comment
+.br
+.B host
+.I as400.example.com
+.br
+.B port
+.I 21
+.br
+.B user
+.I QSECOFR
+.br
+.B password
+.I secret
+.RE
+.SH FILES
+/etc/zs/default.conf
 .SH SEE ALSO
 .BR ftp (1)
