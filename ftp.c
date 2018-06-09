@@ -31,7 +31,7 @@ static void print_debug(struct ftp *ftp, enum ftp_verbosity verbosity,
 	va_list ap;
 
 	if (ftp->verbosity >= verbosity) {
-		len = sprintf(buf, "%d: ", ftp->sock);
+		len = sprintf(buf, "%d: %d: ", getpid(), verbosity);
 
 		va_start(ap, format);
 		vsnprintf(buf + len, sizeof(buf) - len, format, ap);
@@ -293,10 +293,10 @@ ssize_t ftp_write(struct ftp * ftp, void *buf, size_t count)
 	rc = write(ftp->sock, buf, count);
 	switch (rc) {
 	case 0:
-		print_debug(ftp, FTP_VERBOSE_MORE, "::WRITE: [NOTHING]");
+		print_debug(ftp, FTP_VERBOSE_MORE, "WRITE: [NOTHING]");
 		break;
 	case -1:
-		print_debug(ftp, FTP_VERBOSE_MORE, "::WRITE: %s",
+		print_debug(ftp, FTP_VERBOSE_MORE, "WRITE: %s",
 			    strerror(errno));
 		break;
 	default:
@@ -318,15 +318,12 @@ ssize_t ftp_recv(struct ftp * ftp, void *buf, size_t len, int flags)
 	rc = recv(ftp->sock, buf, len, flags);
 	switch (rc) {
 	case 0:
-		print_debug(ftp, FTP_VERBOSE_MORE, "::RECV: [NOTHING]\n");
+		print_debug(ftp, FTP_VERBOSE_MORE, "RECV: [NOTHING]\n");
 		break;
 	case -1:
-		print_debug(ftp, FTP_VERBOSE_MORE, "::RECV: [%s]\n",
+		print_debug(ftp, FTP_VERBOSE_MORE, "RECV: [%s]\n",
 			    strerror(errno));
 		break;
-	default:
-		print_debug(ftp, FTP_VERBOSE_MORE, "RECV: <%*s>",
-			    (int) rc, (char *) buf);
 	}
 
 	return rc;
