@@ -9,7 +9,7 @@
 #include <getopt.h>
 
 char *program_name;
-#define PROGRAM_VERSION	"1.7"
+#define PROGRAM_VERSION	"1.8"
 
 #include "ftp.h"
 #include "zs.h"
@@ -263,12 +263,6 @@ static int sourcemain(struct sourceopt *sourceopt, struct ftp *ftp)
 	struct object *obj;
 	int i;
 
-	if (ftp_connect(ftp) == -1) {
-		print_error("failed to connect to source: %s\n",
-			    ftp_strerror(ftp));
-		return 1;
-	}
-
 	for (i = 0; i < Z_OBJMAX; i++) {
 		obj = &(sourceopt->objects[i]);
 		if (*obj->obj == '\0')
@@ -292,12 +286,6 @@ static int targetmain(struct targetopt *targetopt, struct ftp *ftp)
 	size_t linesiz;
 
 	returncode = 0;
-
-	if (ftp_connect(ftp) == -1) {
-		print_error("failed to connect to target: %s\n",
-			    ftp_strerror(ftp));
-		return 1;
-	}
 
 	fd = dup(targetopt->pipe);
 	if (fd == -1) {
@@ -346,6 +334,7 @@ int main(int argc, char **argv)
 
 	struct ftp sourceftp;
 	struct ftp targetftp;
+	struct ftpansbuf ftpans;
 
 	program_name = strrchr(argv[0], '/');
 	if (program_name)
@@ -358,8 +347,6 @@ int main(int argc, char **argv)
 
 	memset(&sourceopt, 0, sizeof(sourceopt));
 	memset(&targetopt, 0, sizeof(targetopt));
-
-	strcpy(sourceopt.release, "*CURRENT");
 
 	while ((c = getopt(argc, argv,
 			   "Vhvs:u:p:l:t:m:r:c:S:U:P:L:M:C:")) != -1) {
@@ -459,6 +446,34 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
+	if (ftp_connect(&sourceftp) == -1) {
+		print_error("failed to connect to source: %s\n",
+			    ftp_strerror(&sourceftp));
+		return 1;
+	}
+
+	if (ftp_connect(&targetftp) == -1) {
+		print_error("failed to connect to target: %s\n",
+			    ftp_strerror(&targetftp));
+		return 1;
+	}
+
+	/* try to guess target release if none is specified */
+	if (*sourceopt.release == '\0') {
+		memset(&ftpans, 0, sizeof(struct ftpansbuf));
+		rc = ftp_cmd_r(&targetftp, &ftpans, "SYST\r\n");
+		if (ftp_dfthandle_r(&targetftp, &ftpans, rc, 215) == 0) {
+			if (sscanf(ftpans.buffer,
+				   " OS/400 is the remote operating system. The TCP/IP version is \"%[a-zA-Z0-9]\".",
+				   sourceopt.release) != 1)
+				*sourceopt.release = '\0';
+		}
+	}
+	/* ... fallback to *CURRENT */
+	if (*sourceopt.release == '\0') {
+		strcpy(sourceopt.release, "*CURRENT");
+	}
+
 	switch (fork()) {
 	case -1:
 		print_error("failed to fork: %s\n", strerror(errno));
@@ -467,7 +482,7 @@ int main(int argc, char **argv)
 		targetopt.pipe = pipefd[0];
 		close(pipefd[1]);
 		rc = targetmain(&targetopt, &targetftp);
-		close(sourceopt.pipe);
+		close(targetopt.pipe);
 		ftp_close(&targetftp);
 		return rc;
 		break;
