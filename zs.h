@@ -1,3 +1,8 @@
+/*
+ * zs - copy objects from one AS/400 to another
+ * Copyright (C) 2018  Andreas Louv <andreas@louv.dk>
+ * See LICENSE
+ */
 #ifndef ZS_H
 #define ZS_H 1
 
