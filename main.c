@@ -15,7 +15,7 @@
 
 /* set by main with argv[0] */
 char *program_name;
-#define PROGRAM_VERSION	"1.11"
+#define PROGRAM_VERSION	"1.12"
 
 #include "ftp.h"
 #include "zs.h"
@@ -82,24 +82,25 @@ static void guessrelease(char *release, struct ftp *sourceftp,
 {
 	char sourcerelease[Z_RLSSIZ];
 	char targetrelease[Z_RLSSIZ];
+	char format[BUFSIZ];
 	struct ftpansbuf ftpans;
 	int rc;
+
+	snprintf(format, sizeof(format),
+		 " OS/400 is the remote operating system. The TCP/IP version is \"%%%lu[a-zA-Z0-9]\".",
+		 sizeof(sourcerelease) - 1);
 
 	memset(&ftpans, 0, sizeof(struct ftpansbuf));
 	rc = ftp_cmd_r(sourceftp, &ftpans, "SYST\r\n");
 	if (ftp_dfthandle_r(sourceftp, &ftpans, rc, 215) == 0) {
-		if (sscanf(ftpans.buffer,
-			   " OS/400 is the remote operating system. The TCP/IP version is \"%[a-zA-Z0-9]\".",
-			   sourcerelease) != 1)
+		if (sscanf(ftpans.buffer, format, sourcerelease) != 1)
 			return;
 	}
 
 	memset(&ftpans, 0, sizeof(struct ftpansbuf));
 	rc = ftp_cmd_r(targetftp, &ftpans, "SYST\r\n");
 	if (ftp_dfthandle_r(targetftp, &ftpans, rc, 215) == 0) {
-		if (sscanf(ftpans.buffer,
-			   " OS/400 is the remote operating system. The TCP/IP version is \"%[a-zA-Z0-9]\".",
-			   targetrelease) != 1)
+		if (sscanf(ftpans.buffer, format, targetrelease) != 1)
 			return;
 	}
 
