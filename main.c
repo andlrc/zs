@@ -14,7 +14,7 @@
 #include <getopt.h>
 
 char *program_name;
-#define PROGRAM_VERSION	"1.10"
+#define PROGRAM_VERSION	"1.11"
 
 #include "ftp.h"
 #include "zs.h"
@@ -68,6 +68,37 @@ static void print_error(char *format, ...)
 	va_end(ap);
 
 	fputs(buf, stderr);
+}
+
+static void guessrelease(char *release, struct ftp *sourceftp,
+			 struct ftp *targetftp)
+{
+	char sourcerelease[Z_RLSSIZ];
+	char targetrelease[Z_RLSSIZ];
+	struct ftpansbuf ftpans;
+	int rc;
+
+	memset(&ftpans, 0, sizeof(struct ftpansbuf));
+	rc = ftp_cmd_r(sourceftp, &ftpans, "SYST\r\n");
+	if (ftp_dfthandle_r(sourceftp, &ftpans, rc, 215) == 0) {
+		if (sscanf(ftpans.buffer,
+			   " OS/400 is the remote operating system. The TCP/IP version is \"%[a-zA-Z0-9]\".",
+			   sourcerelease) != 1)
+			return;
+	}
+
+	memset(&ftpans, 0, sizeof(struct ftpansbuf));
+	rc = ftp_cmd_r(targetftp, &ftpans, "SYST\r\n");
+	if (ftp_dfthandle_r(targetftp, &ftpans, rc, 215) == 0) {
+		if (sscanf(ftpans.buffer,
+			   " OS/400 is the remote operating system. The TCP/IP version is \"%[a-zA-Z0-9]\".",
+			   targetrelease) != 1)
+			return;
+	}
+
+	if (strcmp(sourcerelease, targetrelease) > 0) {
+		strcpy(release, targetrelease);
+	}
 }
 
 static int downloadobj(struct sourceopt *sourceopt, struct ftp *ftp,
@@ -338,7 +369,6 @@ int main(int argc, char **argv)
 
 	struct ftp sourceftp;
 	struct ftp targetftp;
-	struct ftpansbuf ftpans;
 
 	program_name = strrchr(argv[0], '/');
 	if (program_name)
@@ -464,14 +494,7 @@ int main(int argc, char **argv)
 
 	/* try to guess target release if none is specified */
 	if (*sourceopt.release == '\0') {
-		memset(&ftpans, 0, sizeof(struct ftpansbuf));
-		rc = ftp_cmd_r(&targetftp, &ftpans, "SYST\r\n");
-		if (ftp_dfthandle_r(&targetftp, &ftpans, rc, 215) == 0) {
-			if (sscanf(ftpans.buffer,
-				   " OS/400 is the remote operating system. The TCP/IP version is \"%[a-zA-Z0-9]\".",
-				   sourceopt.release) != 1)
-				*sourceopt.release = '\0';
-		}
+		guessrelease(sourceopt.release, &sourceftp, &targetftp);
 	}
 	/* ... fallback to *CURRENT */
 	if (*sourceopt.release == '\0') {
