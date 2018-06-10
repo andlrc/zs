@@ -132,6 +132,10 @@ int ftp_connect(struct ftp *ftp)
 		return -1;
 	}
 
+	print_debug(ftp, FTP_VERBOSE_DEBUG,
+		    "CONNECT: getaddrinfo(\"%s\", \"%s\", ..., ...)\n",
+		    ftp->server.host, sport);
+
 	switch (getaddrinfo(ftp->server.host, sport, &hints, &res)) {
 	case EAI_SYSTEM:
 		ftp->errnum = EFTP_SYSTEM;
@@ -165,10 +169,17 @@ int ftp_connect(struct ftp *ftp)
 		return -1;
 	}
 
+
 	for (ftp->sock = -1, ressave = res; res; res = res->ai_next) {
+		print_debug(ftp, FTP_VERBOSE_DEBUG,
+			    "CONNECT: socket(%d, %d, %d)\n",
+			    res->ai_family, res->ai_socktype, res->ai_protocol);
 		if ((ftp->sock = socket(res->ai_family, res->ai_socktype,
 					res->ai_protocol)) < 0)
 			continue;	/* ignore */
+		print_debug(ftp, FTP_VERBOSE_DEBUG,
+			    "CONNECT: connect(%d, %u, %d)\n",
+			    ftp->sock, res->ai_addr, res->ai_addrlen);
 		if (connect(ftp->sock, res->ai_addr, res->ai_addrlen) == 0)
 			break;	/* success */
 		close(ftp->sock);

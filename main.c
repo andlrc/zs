@@ -15,7 +15,7 @@
 
 /* set by main with argv[0] */
 char *program_name;
-#define PROGRAM_VERSION	"1.12"
+#define PROGRAM_VERSION	"1.13"
 
 #include "ftp.h"
 #include "zs.h"

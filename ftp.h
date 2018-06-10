@@ -37,7 +37,8 @@ enum ftp_errors {
 
 enum ftp_verbosity {
 	FTP_VERBOSE_SOME = 1,
-	FTP_VERBOSE_MORE = 2
+	FTP_VERBOSE_MORE,
+	FTP_VERBOSE_DEBUG
 };
 
 enum ftp_variable {
