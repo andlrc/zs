@@ -15,6 +15,7 @@
 #include <time.h>
 #include "ftp.h"
 
+/* error message follow the index of "enum ftp_errors" */
 static const char *ftp_error_messages[] = {
 	"Success",
 	"Destination buffer would overflow",
@@ -28,6 +29,7 @@ static const char *ftp_error_messages[] = {
 	"Missing host"
 };
 
+/* print debug information based on the verbosity level set */
 static void print_debug(struct ftp *ftp, enum ftp_verbosity verbosity,
 			char *format, ...)
 {
@@ -41,12 +43,11 @@ static void print_debug(struct ftp *ftp, enum ftp_verbosity verbosity,
 		va_start(ap, format);
 		vsnprintf(buf + len, sizeof(buf) - len, format, ap);
 		va_end(ap);
-
 		fputs(buf, stderr);
-
 	}
 }
 
+/* initialize the ftp struct, should always be called before anything else */
 void ftp_init(struct ftp *ftp)
 {
 	memset(ftp, 0, sizeof(struct ftp));
@@ -55,6 +56,7 @@ void ftp_init(struct ftp *ftp)
 	ftp->server.maxtries = 100;
 }
 
+/* close the ftp connection and cleanup */
 void ftp_close(struct ftp *ftp)
 {
 	close(ftp->sock);
@@ -64,6 +66,7 @@ void ftp_close(struct ftp *ftp)
 	ftp->recvline.buffer = NULL;
 }
 
+/* set ftp configuration */
 int ftp_set_variable(struct ftp *ftp, enum ftp_variable var, char *val)
 {
 	switch (var) {
@@ -84,15 +87,19 @@ int ftp_set_variable(struct ftp *ftp, enum ftp_variable var, char *val)
 		return 0;
 	case FTP_VAR_VERBOSE:
 		if (*val == '+' || *val == '-') {
+			/* +1, -2, ... */
 			ftp->verbosity += atoi(val);
 		} else {
+			/* 1, 2, ... */
 			ftp->verbosity = atoi(val);
 		}
 		return 0;
 	case FTP_VAR_MAXTRIES:
 		if (*val == '+' || *val == '-') {
+			/* +1, -2, ... */
 			ftp->server.maxtries += atoi(val);
 		} else {
+			/* 1, 2, ... */
 			ftp->server.maxtries = atoi(val);
 		}
 		return 0;
@@ -102,6 +109,10 @@ int ftp_set_variable(struct ftp *ftp, enum ftp_variable var, char *val)
 	return -1;
 }
 
+/*
+ * connect to the ftp server.
+ * host, user, etc. should already be set using "ftp_set_variable"
+ */
 int ftp_connect(struct ftp *ftp)
 {
 	struct addrinfo hints, *res, *ressave;
@@ -201,6 +212,7 @@ int ftp_connect(struct ftp *ftp)
 	return 0;
 }
 
+/* run an ftp command, note each command should be terminated with "\r\n" */
 int ftp_cmd(struct ftp *ftp, char *format, ...)
 {
 	char cmd[BUFSIZ];
@@ -217,6 +229,10 @@ int ftp_cmd(struct ftp *ftp, char *format, ...)
 	return ftp_cmdcontinue(ftp);
 }
 
+/*
+ * same as "ftp_cmd" but a re-entrant interface that supports reading the
+ * response
+ */
 int ftp_cmd_r(struct ftp *ftp, struct ftpansbuf *ftpans, char *format, ...)
 {
 	char cmd[BUFSIZ];
@@ -233,6 +249,13 @@ int ftp_cmd_r(struct ftp *ftp, struct ftpansbuf *ftpans, char *format, ...)
 	return ftp_cmdcontinue_r(ftp, ftpans);
 }
 
+/*
+ * pull the server for a response to "ftp_cmd".
+ * the return value is:
+ * - 0 when no data is available,
+ * - -1 on error,
+ * - and the ftp reply code on success
+ */
 int ftp_cmdcontinue(struct ftp *ftp)
 {
 	struct ftpansbuf ftpans;
@@ -241,6 +264,10 @@ int ftp_cmdcontinue(struct ftp *ftp)
 	return ftp_cmdcontinue_r(ftp, &ftpans);
 }
 
+/*
+ * same as "ftp_cmdcontinue", but with the same re-entrant properties as
+ * "ftp_cmd_r"
+ */
 int ftp_cmdcontinue_r(struct ftp *ftp, struct ftpansbuf *ansbuf)
 {
 	struct timespec sleeper;
@@ -264,6 +291,12 @@ int ftp_cmdcontinue_r(struct ftp *ftp, struct ftpansbuf *ansbuf)
 	return -1;
 }
 
+/*
+ * default handler for "ftp_cmd".
+ * the return value is:
+ * - 0 if the expected reply is received,
+ * - or -1 on error
+ */
 int ftp_dfthandle(struct ftp *ftp, int rc, int reply)
 {
 	struct ftpansbuf ftpans;
@@ -271,6 +304,10 @@ int ftp_dfthandle(struct ftp *ftp, int rc, int reply)
 	return ftp_dfthandle_r(ftp, &ftpans, rc, reply);
 }
 
+/*
+ * same as "ftp_dfthandle", but with the same re-entrant properties as
+ * "ftp_cmd_r"
+ */
 int ftp_dfthandle_r(struct ftp *ftp, struct ftpansbuf *ftpans,
 		    int rc, int reply)
 {
@@ -292,6 +329,7 @@ int ftp_dfthandle_r(struct ftp *ftp, struct ftpansbuf *ftpans,
 	return 0;
 }
 
+/* lower level interface to write to the ftp socket, works like "write(2)" */
 ssize_t ftp_write(struct ftp * ftp, void *buf, size_t count)
 {
 	ssize_t rc;
@@ -317,6 +355,7 @@ ssize_t ftp_write(struct ftp * ftp, void *buf, size_t count)
 	return rc;
 }
 
+/* lower level interface to read from the ftp socket, works like "recv(2)" */
 ssize_t ftp_recv(struct ftp * ftp, void *buf, size_t len, int flags)
 {
 	ssize_t rc;
@@ -334,6 +373,7 @@ ssize_t ftp_recv(struct ftp * ftp, void *buf, size_t len, int flags)
 	return rc;
 }
 
+/* lower level interface used by "ftp_continue" and "ftp_continue_r" */
 int ftp_recvans(struct ftp *ftp, struct ftpansbuf *ansbuf)
 {
 	char buf[BUFSIZ];
@@ -367,6 +407,7 @@ int ftp_recvans(struct ftp *ftp, struct ftpansbuf *ansbuf)
 	return 0;
 }
 
+/* read line from ftp socket */
 ssize_t ftp_recvline(struct ftp * ftp, char *resbuf, size_t ressiz)
 {
 	char recvbuf[BUFSIZ];
@@ -439,6 +480,10 @@ ssize_t ftp_recvline(struct ftp * ftp, char *resbuf, size_t ressiz)
 	return nloffset + 1;
 }
 
+/*
+ * store unique file on ftp server.
+ * NOTE: remotename can be updated with the actual stored name
+ */
 int ftp_put(struct ftp *ftp, char *localname, char *remotename)
 {
 	int rc;
@@ -521,6 +566,7 @@ int ftp_put(struct ftp *ftp, char *localname, char *remotename)
 	return 0;
 }
 
+/* download file from server */
 int ftp_get(struct ftp *ftp, char *localname, char *remotename)
 {
 	int rc;
@@ -597,6 +643,11 @@ int ftp_get(struct ftp *ftp, char *localname, char *remotename)
 	return 0;
 }
 
+/*
+ * print errors.
+ * should always be called immediately after an error occurred as the value of
+ * "errno" cannot change.
+ */
 const char *ftp_strerror(struct ftp *ftp)
 {
 	switch (ftp->errnum) {

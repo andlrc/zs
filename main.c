@@ -13,6 +13,7 @@
 #include <errno.h>
 #include <getopt.h>
 
+/* set by main with argv[0] */
 char *program_name;
 #define PROGRAM_VERSION	"1.11"
 
@@ -55,6 +56,7 @@ static void print_help(void)
 	       program_name);
 }
 
+/* print error prefixed with "program_name" */
 static void print_error(char *format, ...)
 {
 	va_list ap;
@@ -70,6 +72,11 @@ static void print_error(char *format, ...)
 	fputs(buf, stderr);
 }
 
+/*
+ * guess the targets version of OS.
+ * if the source is newer than the target when "release" will be populated with
+ * the targets release name, i.e "V7R1M0"
+ */
 static void guessrelease(char *release, struct ftp *sourceftp,
 			 struct ftp *targetftp)
 {

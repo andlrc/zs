@@ -76,6 +76,7 @@ struct ftp {
 	} recvline;
 };
 
+/* buffer used by "ftp_recvans" */
 struct ftpansbuf {
 	int reply;
 	int continues;		/* boolean */

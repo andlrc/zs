@@ -13,6 +13,7 @@
 #include "zs.h"
 #include "util.h"
 
+/* error message follow the index of "enum util_errors" */
 static const char *util_error_messages[] = {
 	"Success",
 	"Missing value for option",
@@ -170,6 +171,11 @@ int util_parseobj(struct object *obj, char *optobj)
 	return 0;
 }
 
+/*
+ * print errors.
+ * should always be called immediately after an error occurred as the value of
+ * "errno" cannot change.
+ */
 const char *util_strerror(int errnum)
 {
 	switch (errnum) {
