@@ -15,7 +15,7 @@
 
 /* set by main with argv[0] */
 char *program_name;
-#define PROGRAM_VERSION	"1.14"
+#define PROGRAM_VERSION	"1.15"
 
 #include "ftp.h"
 #include "zs.h"
@@ -341,11 +341,6 @@ static int targetmain(struct targetopt *targetopt, struct ftp *ftp)
 	linesiz = 0;
 
 	while (getline(&line, &linesiz, fp) > 0) {
-		/* no more objects */
-		if (*line == '\n') {
-			break;
-		}
-
 		lib = strtok_r(line, ":", &saveptr);
 		localname = strtok_r(NULL, "\n", &saveptr);
 
@@ -525,9 +520,6 @@ int main(int argc, char **argv)
 		sourceopt.pipe = pipefd[1];
 		close(pipefd[0]);
 		rc = sourcemain(&sourceopt, &sourceftp);
-
-		/* tell child that everything is done */
-		write(sourceopt.pipe, "\n", 1);
 
 		/* cleanup */
 		close(sourceopt.pipe);
