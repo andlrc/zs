@@ -22,6 +22,14 @@ static const char *util_error_messages[] = {
 	"Maximum types reached"
 };
 
+/*
+ * parse config file.
+ * in short the format is:
+ * $option <sp> $value <nl>
+ * # comment
+ * ; comment
+ * see "zs(1)" for more information about the config file format
+ */
 int util_parsecfg(struct ftp *ftp, char *filename)
 {
 	/* ($option <sp> $value <nl>)* */
@@ -91,9 +99,12 @@ exit:	free(line);
 	return returncode;
 }
 
+/*
+ * parse library list
+ * split the input libl on comma and store in "sourceopt->libl"
+ */
 int util_parselibl(struct sourceopt *sourceopt, char *optlibl)
 {
-	/* "lib1,lib2,...,libN" */
 	char *saveptr, *p;
 	int i = 0;
 
@@ -143,15 +154,15 @@ int util_parsetypes(struct sourceopt *sourceopt, char *opttypes)
 	return 0;
 }
 
+/*
+ * parse object
+ * obj   = ( $libl "/" )? $obj ( "*" $type )?
+ * $libl = \w{1,10}
+ * $obj  = \w{1,10}
+ * $type = \w{1,10}
+ */
 int util_parseobj(struct object *obj, char *optobj)
 {
-	/*
-	 * obj   = ( $libl "/" )? $obj ( "*" $type )?
-	 * $libl = \w{1,10}
-	 * $obj  = \w{1,10}
-	 * $type = \w{1,10}
-	 * If $type is missing then "ALL" is used
-	 */
 	char *saveptr, *p;
 
 	/* $libl */
