@@ -111,14 +111,15 @@ int util_parselibl(struct sourceopt *sourceopt, char *optlibl)
 	return 0;
 }
 
+/*
+ * parse searched types
+ * split the input types on comma and store in "sourceopt->types"
+ * $types = type1,type2,type3
+ * $type  = *type | type
+ */
 int util_parsetypes(struct sourceopt *sourceopt, char *opttypes)
 {
-	/*
-	 * $type  = "*" TYPE | TYPE
-	 * $types = $type | $types "," $type
-	 * "type1,type2,...typeN"
-	 */
-	char *saveptr, *p;
+	char *saveptr, *p, *dest;
 	int i = 0;
 
 	p = strtok_r(opttypes, ",", &saveptr);
@@ -127,7 +128,14 @@ int util_parsetypes(struct sourceopt *sourceopt, char *opttypes)
 			return EUTIL_TYPEOVERFLOW;
 		}
 
-		strncpy(sourceopt->types[i], p, Z_TYPESIZ);
+		dest = sourceopt->types[i];
+
+		/* add leading asterisk if omitted */
+		if (*p != '*') {
+			*dest++ = '*';
+		}
+
+		strncpy(dest, p, Z_TYPESIZ - (dest - sourceopt->types[i]));
 		sourceopt->types[i][Z_TYPESIZ - 1] = '\0';
 		i++;
 	} while ((p = strtok_r(NULL, ",", &saveptr)) != NULL);
@@ -162,10 +170,11 @@ int util_parseobj(struct object *obj, char *optobj)
 	obj->obj[Z_OBJSIZ - 1] = '\0';
 
 	/* $type */
-	p = strtok_r(NULL, ".", &saveptr);
+	p = strtok_r(NULL, "?", &saveptr);
 	if (p != NULL) {
-		strncpy(obj->type, p, Z_TYPESIZ);
-		obj->type[Z_TYPESIZ - 1] = '\0';
+		*obj->type = '*';
+		strncpy(obj->type + 1, p, Z_TYPESIZ - 1);
+		obj->type[Z_TYPESIZ - 2] = '\0';
 	}
 
 	return 0;

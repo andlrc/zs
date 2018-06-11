@@ -15,7 +15,7 @@
 
 /* set by main with argv[0] */
 char *program_name;
-#define PROGRAM_VERSION	"1.13"
+#define PROGRAM_VERSION	"1.14"
 
 #include "ftp.h"
 #include "zs.h"
@@ -140,14 +140,14 @@ static int downloadobj(struct sourceopt *sourceopt, struct ftp *ftp,
 
 			if (*type == '\0') {
 				if (y == 0) {
-					type = "ALL";
+					type = "*ALL";
 				} else {
 					break;
 				}
 			}
 
 			/* try to save the object located in $lib */
-			rc = ftp_cmd(ftp, "RCMD SAVOBJ OBJ(%s) OBJTYPE(*%s) LIB(%s) TGTRLS(%s) DEV(*SAVF) SAVF(QTEMP/ZS) DTACPR(*HIGH)\r\n",
+			rc = ftp_cmd(ftp, "RCMD SAVOBJ OBJ(%s) OBJTYPE(%s) LIB(%s) TGTRLS(%s) DEV(*SAVF) SAVF(QTEMP/ZS) DTACPR(*HIGH)\r\n",
 				     obj->obj, type, lib, sourceopt->release);
 			while (rc != 250 && rc != 550) {
 				switch (rc) {
@@ -213,7 +213,7 @@ static int downloadobj(struct sourceopt *sourceopt, struct ftp *ftp,
 	}
 	close(destfd);
 
-	printf("downloading %s/%s*%s to %s\n", lib, obj->obj, type,
+	printf("downloading %s/%s%s to %s\n", lib, obj->obj, type,
 	       localname);
 
 	if (ftp_get(ftp, localname, remotename) != 0) {
