@@ -15,7 +15,7 @@
 
 /* set by main with argv[0] */
 char *program_name;
-#define PROGRAM_VERSION	"1.15"
+#define PROGRAM_VERSION	"1.16"
 
 #include "ftp.h"
 #include "zs.h"
@@ -39,6 +39,7 @@ static void print_help(void)
 	       "  -t types      set type list\n"
 	       "                comma separated list of types\n"
 	       "  -m tries      set maximum tries for source to respond\n"
+	       "  -r release    set target release\n"
 	       "  -c file       source config file\n"
 	       "\n"
 	       "  -S host       set target host\n"
