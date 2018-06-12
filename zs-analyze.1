@@ -1,0 +1,140 @@
+.TH ZS\-ANALYZE 1
+.SH NAME
+ZS\-ANALYZE \- Print depends and dependencies for objects
+.SH SYNOPSIS
+.B zs\-analyze
+[\fIOPTION\fR]... \fIOBJECT\fR...
+.SH DESCRIPTON
+zs\-analyze prints depends and dependencies for objects
+.SH OPTIONS
+.PP
+Options like \fB-c\fR can be specified multiple times each adding to the
+previous result set.
+.TP
+\fB\-s\fR \fIHOST\fR
+set source host
+.TP
+\fB\-u\fR \fIUSER\fR
+set source user
+.TP
+\fB\-p\fR \fIPORT\fR
+set source port
+.TP
+\fB\-m\fR \fITRIES\fR
+set maximum tries for source to respond
+.IP
+a timeout will occur when the server have not responded to a pull
+.I TRIES
+times, between each pull 250ms delay will occur
+.TP
+\fB\-c\fR \fIFILE\fR
+source config file
+.IP
+a file following the schema defined in
+.B CONFIG FORMAT
+.IP
+can be specified multiple times
+.TP
+\fB\-v\fR
+level of verbosity
+.IP
+can be specified multiple times, each additional time provides more verbosity
+.TP
+\fB\-V\fR
+option version information and exit
+.TP
+\fB\-h\fR
+show help message and exit
+.SS "Exit status:"
+.TP
+0
+if OK,
+.TP
+1
+if any problem,
+.TP
+2
+if provided command\-line arguments wrong.
+.SH OBJECTS
+At least one object needs specified.
+.PP
+An object takes the following form:
+.PP
+.RS
+\fILIBRARY\fR\fB/\fR\fIOBJECT\fR
+.RE
+.SH "CONFIG FORMAT"
+The config file takes the following format:
+.PP
+.RS
+.I KEY
+.B <SP>
+.I VALUE
+.RE
+.PP
+.RS 0
+.IP "\-" 2
+.I KEY
+the following keys are supported
+.RS 2
+.IP "\-" 2
+.B server
+synonym for
+.B host
+.IP "\-" 2
+.B host
+.IP "\-" 2
+.B user
+.IP "\-" 2
+.B password
+.IP "\-" 2
+.B port
+.IP "\-" 2
+.B tries
+synonym for
+.B maxtries
+.IP "\-" 2
+.B maxtries
+.RE
+.IP "\-" 2
+.B <SP>
+one or more space characters;
+.BR 0x20 ,
+or
+.BR 0x09 .
+.IP "\-" 2
+.I VALUE
+value will be read until EOL
+.RE
+.PP
+A comment starts with
+.BR # ,
+or
+.BR ; .
+.SS Example
+Example of a config file:
+.PP
+.RS
+.B #
+this is a comment
+.br
+.B ;
+this is also a comment
+.br
+.B host
+.I as400.example.com
+.br
+.B port
+.I 21
+.br
+.B user
+.I QSECOFR
+.br
+.B password
+.I secret
+.RE
+.SH FILES
+/etc/zs/default.conf
+.SH SEE ALSO
+.BR zs (1)
+.BR ftp (1)
