@@ -4,7 +4,7 @@
 
 CFLAGS	= -O2 -Wall -Wextra -Wpedantic -Wshadow
 
-OFILES	= main.o util.o ftp.o
+OFILES	= zs.o util.o ftp.o
 
 all:	zs
 .PHONY:	all
@@ -12,7 +12,7 @@ zs:	$(OFILES)
 	$(CC) $(CFLAGS) -o $@ $^
 
 ftp.o:	ftp.h ftp.c
-main.o:	ftp.h zs.h util.h main.c
+zs.o:	ftp.h zs.h util.h zs.c
 util.o:	ftp.h zs.h util.h util.c
 
 clean:
