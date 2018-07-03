@@ -1,5 +1,5 @@
 /*
- * zs-analyze - Print depends and dependencies for objects
+ * zs - work with, and move objects from one AS/400 to another.
  * Copyright (C) 2018  Andreas Louv <andreas@louv.dk>
  * See LICENSE
  */

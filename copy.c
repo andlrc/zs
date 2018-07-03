@@ -1,5 +1,5 @@
 /*
- * zs - copy objects from one AS/400 to another
+ * zs - work with, and move objects from one AS/400 to another.
  * Copyright (C) 2018  Andreas Louv <andreas@louv.dk>
  * See LICENSE
  */
@@ -13,22 +13,13 @@
 #include <errno.h>
 #include <getopt.h>
 
-/* set by main with argv[0] */
-char *program_name;
-#define PROGRAM_VERSION	"1.16"
-
 #include "ftp.h"
 #include "zs.h"
 #include "util.h"
 
-static void print_version(void)
-{
-	printf("%s %s\n", program_name, PROGRAM_VERSION);
-}
-
 static void print_help(void)
 {
-	printf("Usage %s [OPTION]... OBJECT...\n"
+	printf("Usage %s copy [OPTION]... OBJECT...\n"
 	       "Copy objects from one AS/400 to another\n"
 	       "\n"
 	       "  -s host       set source host\n"
@@ -50,27 +41,10 @@ static void print_help(void)
 	       "  -C file       source config file\n"
 	       "\n"
 	       "  -v            level of verbosity, can be set multiple times\n"
-	       "  -V            output version information and exit\n"
 	       "  -h            show this help message and exit\n"
 	       "\n"
-	       "See zs(1) for more information\n",
+	       "See zs-analyze(1) for more information\n",
 	       program_name);
-}
-
-/* print error prefixed with "program_name" */
-static void print_error(char *format, ...)
-{
-	va_list ap;
-	char buf[BUFSIZ];
-	int len;
-
-	len = snprintf(buf, sizeof(buf), "%s: ", program_name);
-
-	va_start(ap, format);
-	vsnprintf(buf + len, sizeof(buf) - len, format, ap);
-	va_end(ap);
-
-	fputs(buf, stderr);
 }
 
 /*
@@ -363,7 +337,7 @@ exit:	free(line);
 	return returncode;
 }
 
-int main(int argc, char **argv)
+int main_copy(int argc, char **argv)
 {
 	int c, rc, argind, i;
 	int childrc, pipefd[2];
@@ -374,12 +348,6 @@ int main(int argc, char **argv)
 	struct ftp sourceftp;
 	struct ftp targetftp;
 
-	program_name = strrchr(argv[0], '/');
-	if (program_name)
-		program_name++;
-	else
-		program_name = argv[0];
-
 	ftp_init(&sourceftp);
 	ftp_init(&targetftp);
 
@@ -387,11 +355,8 @@ int main(int argc, char **argv)
 	memset(&targetopt, 0, sizeof(targetopt));
 
 	while ((c = getopt(argc, argv,
-			   "Vhvs:u:p:l:t:m:r:c:S:U:P:L:M:C:")) != -1) {
+			   "hvs:u:p:l:t:m:r:c:S:U:P:L:M:C:")) != -1) {
 		switch (c) {
-		case 'V':	/* version */
-			print_version();
-			return 0;
 		case 'h':	/* help */
 			print_help();
 			return 0;

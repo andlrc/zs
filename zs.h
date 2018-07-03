@@ -1,5 +1,5 @@
 /*
- * zs - copy objects from one AS/400 to another
+ * zs - work with, and move objects from one AS/400 to another.
  * Copyright (C) 2018  Andreas Louv <andreas@louv.dk>
  * See LICENSE
  */
@@ -33,5 +33,10 @@ struct targetopt {
 	int pipe;
 	char lib[Z_LIBSIZ];
 };
+
+void print_error(char *format, ...);
+
+/* set by main.c */
+char *program_name;
 
 #endif

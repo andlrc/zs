@@ -1,5 +1,5 @@
 /*
- * zs-analyze - Print depends and dependencies for objects
+ * zs - work with, and move objects from one AS/400 to another.
  * Copyright (C) 2018  Andreas Louv <andreas@louv.dk>
  * See LICENSE
  */
@@ -10,6 +10,7 @@
 #include <stddef.h>
 #include <stdlib.h>
 #include <stdarg.h>
+#include <stdbool.h>
 #include <errno.h>
 
 #include "ftp.h"
@@ -17,23 +18,234 @@
 #include "util.h"
 #include "analyze.h"
 
-/* FIXME */
-#define YYY(x, y)	0
-#define ZZZ(x, y)	
 
-/* set by main with argv[0] */
-char *program_name;
-#define PROGRAM_VERSION	"0.1"
+/*
+ * Pseudo Radix tree:
+ *             _____|_____
+ *             |          |
+ *            CSM     NAVUSRET00
+ *        _____|_____
+ *        |         |
+ *       HDR       STG
+ *   _____|_____    |____
+ *   |         |   ET0   |
+ * ET00      RL01 __|__ RL00
+ *                |   |
+ *                0   1
+ */
 
-static void print_version(void)
+struct radix_edges {
+	struct radix_entry **list;
+#define INIT_EDGE_SIZE	8
+	unsigned int size;
+	unsigned int length;
+};
+
+struct radix_entry {
+	char *name;
+	struct radix_edges edges;
+};
+
+/*
+ * Example tree:
+ * {
+ *   name => "",
+ *   edges => [
+ *     {
+ *       name => "CSM",
+ *       edges => [
+ *         {
+ *           name => "HDR",
+ *           edges => [
+ *             {
+ *               name => "ET00",
+ *               edges => null
+ *             },
+ *             {
+ *               name => "RL01",
+ *               edges => null
+ *             }
+ *           ]
+ *         },
+ *         {
+ *           name => "STG",
+ *           edges => [
+ *             {
+ *               name => "ET0",
+ *               edges => [
+ *                 {
+ *                   name => "0",
+ *                   edges => null
+ *                 },
+ *                 {
+ *                   name => "1",
+ *                   edges => null
+ *                 }
+ *               ]
+ *             },
+ *             {
+ *               name => "RL00",
+ *               edges => null
+ *             }
+ *           ]
+ *         }
+ *       ]
+ *     },
+ *     {
+ *       name => "NAVUSRET00",
+ *       edges => null
+ *     }
+ *   ]
+ * }
+ */
+
+static struct radix_entry tree_root;
+
+static struct radix_entry *create_edge(struct radix_entry *tnode, char *key)
 {
-	printf("%s %s\n", program_name, PROGRAM_VERSION);
+	unsigned int size;
+	struct radix_entry *p, *enode;
+
+	if (tnode->edges.length == 0) {
+		tnode->edges.size = INIT_EDGE_SIZE;
+		tnode->edges.length = 0;
+		tnode->edges.list = malloc(sizeof(struct radix_entry *) * tnode->edges.size);
+	} else if (tnode->edges.length == tnode->edges.size) {
+		size = tnode->edges.size * 2;
+		p = realloc(tnode->edges.list, sizeof(struct radix_entry *) *tnode->edges.size);
+		if (p == NULL) {
+			return NULL;
+		}
+		tnode->edges.size = size;
+	}
+
+	enode = malloc(sizeof(struct radix_entry));
+	memset(enode, 0, sizeof(struct radix_entry));
+	enode->name = strdup(key);
+
+
+	tnode->edges.list[tnode->edges.length++] = enode;
+
+	return enode;
+}
+
+/* returns length of prefix if match is found, otherwise 0 */
+static int lookup_edge(struct radix_entry *tnode,
+		       struct radix_entry **enode, char *key)
+{
+	unsigned int i;
+	char *pnam, *pkey;
+
+	for (i = 0; i < tnode->edges.length; i++) {
+		*enode = tnode->edges.list[i];
+		pnam = (*enode)->name;
+		if (*pnam == *key) {
+			for (pkey = key; *pnam == *pkey; pnam++, pkey++) {
+				if (*pkey == '\0')
+					break;
+			}
+
+			/* "key" was only part of the found edge */
+			if (*pnam != '\0') {
+				return 0;
+			}
+
+			return pkey - key;
+		}
+	}
+
+	return 0;	/* not found */
+}
+
+static int goc_edge(struct radix_entry *tnode,
+		    struct radix_entry **enode, char *key)
+{
+	struct radix_entry *spnode;
+	unsigned int i;
+	char *pnam, *pkey;
+
+	for (i = 0; i < tnode->edges.length; i++) {
+		*enode = tnode->edges.list[i];
+		pnam = (*enode)->name;
+		if (*pnam == *key) {
+			for (pkey = key; *pnam == *pkey; pnam++, pkey++) {
+				if (*pkey == '\0')
+					break;
+			}
+
+			/* split */
+			if (*pnam != '\0') {
+				spnode = malloc(sizeof(struct radix_entry));
+				spnode->edges.size = INIT_EDGE_SIZE;
+				spnode->edges.length = 0;
+				spnode->edges.list = malloc(sizeof(struct radix_entry *) * spnode->edges.size);
+				spnode->name = strndup((*enode)->name, pnam - (*enode)->name);
+				tnode->edges.list[i] = spnode;
+
+				/* create previous edge */
+				spnode->edges.list[spnode->edges.length] = *enode;
+				pnam = strdup(pnam);
+				free(spnode->edges.list[spnode->edges.length]->name);
+				spnode->edges.list[spnode->edges.length]->name = pnam;
+				spnode->edges.length++;
+
+				/* create our edge */
+				*enode = create_edge(spnode, pkey);
+			}
+
+			return pkey - key;
+		}
+	}
+
+	create_edge(tnode, key);
+	return strlen(key);
+}
+
+static bool radix_have(char *key)
+{
+	char *pkey;
+	struct radix_entry *tnode, *enode;
+	int rc;
+
+	tnode = &tree_root;
+	pkey = key;
+
+	while (tnode->edges.length && *pkey != '\0') {
+		rc = lookup_edge(tnode, &enode, pkey);
+		if (rc == 0) {	/* not found */
+			return false;
+		}
+		tnode = enode;
+		pkey += rc;
+	}
+
+	return (tnode && *pkey == '\0');
+}
+
+static bool radix_add(char *key)
+{
+	char *pkey;
+	struct radix_entry *tnode, *enode;
+
+	tnode = &tree_root;
+	pkey = key;
+
+	while (tnode->edges.length && *pkey != '\0') {
+		pkey += goc_edge(tnode, &enode, pkey);
+		tnode = enode;
+	}
+
+	if (*pkey != '\0') {
+		create_edge(tnode, pkey);
+	}
+
+	return (tnode && *pkey == '\0');
 }
 
 static void print_help(void)
 {
-	printf("Usage %s [OPTION]... OBJECT...\n"
-	       "Copy objects from one AS/400 to another\n"
+	printf("Usage %s analyze [OPTION]... OBJECT...\n"
+	       "Print depends and dependencies for objects\n"
 	       "\n"
 	       "  -s host       set source host\n"
 	       "  -u user       set source user\n"
@@ -42,29 +254,11 @@ static void print_help(void)
 	       "  -c file       source config file\n"
 	       "\n"
 	       "  -v            level of verbosity, can be set multiple times\n"
-	       "  -V            output version information and exit\n"
 	       "  -h            show this help message and exit\n"
 	       "\n"
 	       "See zs-analyze(1) for more information\n",
 	       program_name);
 }
-
-/* print error prefixed with "program_name" */
-static void print_error(char *format, ...)
-{
-	va_list ap;
-	char buf[BUFSIZ];
-	int len;
-
-	len = snprintf(buf, sizeof(buf), "%s: ", program_name);
-
-	va_start(ap, format);
-	vsnprintf(buf + len, sizeof(buf) - len, format, ap);
-	va_end(ap);
-
-	fputs(buf, stderr);
-}
-
 
 /* get fd with output of cmd, returns -1 on error */
 static int freadcmd(struct ftp *ftp, char *cmd, char *fromfile)
@@ -163,8 +357,8 @@ static int getobjects(struct ftp *ftp, char *lib, char *obj)
 		if (*wlib == '\0' || *wobj == '\0')
 			break;
 
-		if (!YYY(wlib, wobj)) {
-			ZZZ(wlib, wobj);
+		if (!radix_have(wobj)) {
+			radix_add(wobj);
 			printf("%s/%s*FILE\n", wlib, wobj);
 			if (getobjects(ftp, wlib, wobj) == -1)
 				return 1;
@@ -201,8 +395,8 @@ static int getobjects(struct ftp *ftp, char *lib, char *obj)
 		if (*wlib == '\0' || *wobj == '\0')
 			break;
 
-		if (!YYY(wlib, wobj)) {
-			ZZZ(wlib, wobj);
+		if (!radix_have(wobj)) {
+			radix_add(wobj);
 			printf("%s/%s*FILE\n", wlib, wobj);
 			if (getobjects(ftp, wlib, wobj) == -1)
 				return 1;
@@ -213,7 +407,7 @@ static int getobjects(struct ftp *ftp, char *lib, char *obj)
 	return 0;
 }
 
-int main(int argc, char **argv)
+int main_analyze(int argc, char **argv)
 {
 	struct ftp ftp;
 	int c, argind;
@@ -222,19 +416,10 @@ int main(int argc, char **argv)
 	char obj[Z_OBJSIZ];
 	char *p;
 
-	program_name = strrchr(argv[0], '/');
-	if (program_name)
-		program_name++;
-	else
-		program_name = argv[0];
-
 	ftp_init(&ftp);
 
-	while ((c = getopt(argc, argv, "Vhvs:u:p:m:c:")) != -1) {
+	while ((c = getopt(argc, argv, "hvs:u:p:m:c:")) != -1) {
 		switch (c) {
-		case 'V':	/* version */
-			print_version();
-			return 0;
 		case 'h':	/* help */
 			print_help();
 			return 0;

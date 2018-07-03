@@ -1,0 +1,197 @@
+\" zs - work with, and move objects from one AS/400 to another.
+\" Copyright (C) 2018  Andreas Louv <andreas@louv.dk>
+\" See LICENSE
+.TH ZS\-COPY 1
+.SH NAME
+ZS\-COPY \- Copy objects from one AS/400 to another
+.SH SYNOPSIS
+.B zs-copy
+[\fIOPTION\fR]... \fIOBJECT\fR...
+.SH DESCRIPTION
+zs-copy copies objects from one AS/400 to another via FTP.
+.SH OPTIONS
+.PP
+Options like \fB\-l\fR and \fB-c\fR can be specified multiple times each adding
+to the previous result set.
+.TP
+\fB\-s\fR \fIHOST\fR
+set source host
+.TP
+\fB\-u\fR \fIUSER\fR
+set source user
+.TP
+\fB\-p\fR \fIPORT\fR
+set source port
+.TP
+\fB\-l\fR \fILIBL\fR
+set source library list
+.IP
+a comma separated list of libraries to search in when an object does not have an
+explicit library set
+.IP
+can be specified multiple times, each adding to the complete list of libraries
+to search in
+.TP
+\fB\-t\fR \fITYPES\fR
+set source types
+.IP
+a comma separated list of types to use when an object does not have an explicit
+type set
+.IP
+can be specified multiple times, each adding to the complete list of object
+types to search for
+.TP
+\fB\-m\fR \fITRIES\fR
+set maximum tries for source to respond
+.IP
+a timeout will occur when the server have not responded to a pull
+.I TRIES
+times, between each pull 250 milliseconds delay will occur
+.TP
+\fB\-r\fR \fIRELEASE\fR
+set target release
+.IP
+specify release of the operation system the objects will be restored
+.IP
+if omitted then
+.B zs-copy
+will try to guess the proper target release and fallback to
+.B *CURRENT
+.TP
+\fB\-c\fR \fIFILE\fR
+source configuration file
+.IP
+a file following the schema defined in
+.BR zs-config (5)
+.IP
+can be specified multiple times
+.TP
+\fB\-S\fR \fIHOST\fR
+set target host
+.TP
+\fB\-U\fR \fIUSER\fR
+set target user
+.TP
+\fB\-P\fR \fIPORT\fR
+set target port
+.TP
+\fB\-L\fR \fILIB\fR
+set target library
+.IP
+this library is where all objects will be copied to
+.TP
+\fB\-M\fR \fITRIES\fR
+set maximum tries for target to respond
+.IP
+a timeout will occur when the server have not responded to a pull
+.I TRIES
+times, between each pull 250 milliseconds delay will occur
+.TP
+\fB\-C\fR \fIFILE\fR
+target configuration file
+.IP
+a file following the schema defined in
+.BR zs-config (5)
+.IP
+can be specified multiple times
+.TP
+\fB\-v\fR
+level of verbosity
+.IP
+can be specified multiple times, each additional time provides more verbosity
+.TP
+\fB\-V\fR
+option version information and exit
+.TP
+\fB\-h\fR
+show help message and exit
+.SS "Exit status:"
+.TP
+0
+if OK,
+.TP
+1
+if any problem,
+.TP
+2
+if provided command\-line arguments wrong.
+.SH OBJECTS
+At least one object needs specified.
+.PP
+An object takes the following form:
+.PP
+.RS
+\fILIBRARY\fR\fB/\fR\fIOBJECT\fR\fB*\fR\fITYPE\fR
+.RE
+.PP
+.RS 0
+.IP "\-" 2
+.I LIBRARY
+is the library where the object recites, if omitted then the library list is
+searched
+.IP "\-" 2
+.B /
+a literal slash delimiting the
+.I LIBRARY
+and the
+.I OBJECT
+.IP "\-" 2
+.I OBJECT
+is the object, should always be specified
+.IP "\-" 2
+.B *
+a literal asterisk delimiting the
+.I OBJECT
+and the
+.I TYPE
+.IP "\-" 2
+.I TYPE
+is the object type to copy.
+If omitted then the type list is searched, see the
+.B \-t
+option. If the type list is empty, then all objects are copied, same as using
+.I ALL
+as the type
+.PP
+Consult your local system administrator for a full list of supported types.
+.RE
+.SS Example
+.PP
+The following example will copy
+.PP
+.RS 0
+.IP "\-" 2
+.I obj1
+from either
+.IR lib1 ,
+.IR lib2 ,
+or
+.IR lib3 ,
+.IP "\-" 2
+.I obj2
+from
+.IR lib4 
+.IP "\-" 2
+and finally the program named
+.I obj3
+will be copied from either
+.IR lib1 ,
+.IR lib2 ,
+or
+.IR lib3 .
+.RE
+.PP
+.RS
+.B zs
+.B copy
+.B \-l
+.I lib1,lib2,lib3
+.I obj1
+.I lib4/obj2
+.I obj3*PGM
+.RE
+.SH FILES
+/etc/zs/default.conf
+.SH SEE ALSO
+.BR zs (1),
+.BR zs-config (5)
