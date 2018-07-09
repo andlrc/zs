@@ -8,7 +8,7 @@
 #include <string.h>
 
 char *program_name;
-#define PROGRAM_VERSION	"2.0"
+#define PROGRAM_VERSION	"2.1"
 
 int main_copy(int, char **);
 int main_analyze(int, char **);
@@ -59,6 +59,11 @@ int main(int argc, char **argv)
 	else
 		program_name = argv[0];
 
+	if (argc < 2) {
+		print_help(stderr);
+		return 2;
+	}
+
 	if (strcmp(argv[1], "-V") == 0) {
 		print_version();
 		return 0;
@@ -74,5 +79,5 @@ int main(int argc, char **argv)
 
 	print_help(stderr);
 
-	return 1;
+	return 2;
 }
