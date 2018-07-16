@@ -8,7 +8,7 @@
 #include <string.h>
 
 char *program_name;
-#define PROGRAM_VERSION	"2.1"
+#define PROGRAM_VERSION	"2.2"
 
 int main_copy(int, char **);
 int main_analyze(int, char **);
