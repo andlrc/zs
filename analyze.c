@@ -12,6 +12,7 @@
 #include <stdarg.h>
 #include <stdbool.h>
 #include <errno.h>
+#include <getopt.h>
 
 #include "ftp.h"
 #include "zs.h"
@@ -416,6 +417,8 @@ int main_analyze(int argc, char **argv)
 	char obj[Z_OBJSIZ];
 	char *p;
 
+	memset(&tree_root, 0, sizeof(struct radix_entry));
+	tree_root.name = NULL;
 	ftp_init(&ftp);
 
 	while ((c = getopt(argc, argv, "hvs:u:p:m:c:")) != -1) {
