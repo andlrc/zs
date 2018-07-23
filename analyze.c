@@ -33,21 +33,7 @@
  * ET00      RL01 __|__ RL00
  *                |   |
  *                0   1
- */
-
-struct radix_edges {
-	struct radix_entry **list;
-#define INIT_EDGE_SIZE	8
-	unsigned int size;
-	unsigned int length;
-};
-
-struct radix_entry {
-	char *name;
-	struct radix_edges edges;
-};
-
-/*
+ *
  * Example tree:
  * {
  *   name => "",
@@ -100,7 +86,17 @@ struct radix_entry {
  * }
  */
 
-static struct radix_entry tree_root;
+struct radix_edges {
+	struct radix_entry **list;
+#define INIT_EDGE_SIZE	8
+	unsigned int size;
+	unsigned int length;
+};
+
+struct radix_entry {
+	char *name;
+	struct radix_edges edges;
+};
 
 static struct radix_entry *create_edge(struct radix_entry *tnode, char *key)
 {
@@ -202,13 +198,12 @@ static int goc_edge(struct radix_entry *tnode,
 	return strlen(key);
 }
 
-static bool radix_have(char *key)
+static bool radix_have(struct radix_entry *tnode, char *key)
 {
 	char *pkey;
-	struct radix_entry *tnode, *enode;
+	struct radix_entry *enode;
 	int rc;
 
-	tnode = &tree_root;
 	pkey = key;
 
 	while (tnode->edges.length && *pkey != '\0') {
@@ -223,12 +218,11 @@ static bool radix_have(char *key)
 	return (tnode && *pkey == '\0');
 }
 
-static bool radix_add(char *key)
+static bool radix_add(struct radix_entry *tnode, char *key)
 {
 	char *pkey;
-	struct radix_entry *tnode, *enode;
+	struct radix_entry *enode;
 
-	tnode = &tree_root;
 	pkey = key;
 
 	while (tnode->edges.length && *pkey != '\0') {
@@ -241,6 +235,16 @@ static bool radix_add(char *key)
 	}
 
 	return (tnode && *pkey == '\0');
+}
+
+static void radix_cleanup(struct radix_entry *tnode)
+{
+	for (unsigned int i = 0; i < tnode->edges.length; i++) {
+		radix_cleanup(tnode->edges.list[i]);
+		free(tnode->edges.list[i]);
+	}
+	free(tnode->name);
+	free(tnode->edges.list);
 }
 
 static void print_help(void)
@@ -318,7 +322,7 @@ static int freadcmd(struct ftp *ftp, char *cmd, char *fromfile)
 	return fd;
 }
 
-static int getobjects(struct ftp *ftp, char *lib, char *obj)
+static int getobjects(struct radix_entry *tree_root, struct ftp *ftp, char *lib, char *obj)
 {
 	struct dspdbrtab dbrtab;
 	struct dspfdtab fdtab;
@@ -328,6 +332,15 @@ static int getobjects(struct ftp *ftp, char *lib, char *obj)
 	char wlib[Z_LIBSIZ];
 	char wobj[Z_OBJSIZ];
 	char *p;
+
+	memset(&fdtab, 0, sizeof(struct dspfdtab));
+	memset(&dbrtab, 0, sizeof(struct dspdbrtab));
+	rc = 0;
+	fd = 0;
+	memset(cmd, 0, sizeof(cmd));
+	memset(wlib, 0, sizeof(wlib));
+	memset(wobj, 0, sizeof(wobj));
+	p = NULL;
 
 	/* DSPFD */
 	snprintf(cmd, sizeof(cmd),
@@ -358,10 +371,10 @@ static int getobjects(struct ftp *ftp, char *lib, char *obj)
 		if (*wlib == '\0' || *wobj == '\0')
 			break;
 
-		if (!radix_have(wobj)) {
-			radix_add(wobj);
+		if (!radix_have(tree_root, wobj)) {
+			radix_add(tree_root, wobj);
 			printf("%s/%s*FILE\n", wlib, wobj);
-			if (getobjects(ftp, wlib, wobj) == -1)
+			if (getobjects(tree_root, ftp, wlib, wobj) == -1)
 				return 1;
 		}
 	}
@@ -396,10 +409,10 @@ static int getobjects(struct ftp *ftp, char *lib, char *obj)
 		if (*wlib == '\0' || *wobj == '\0')
 			break;
 
-		if (!radix_have(wobj)) {
-			radix_add(wobj);
+		if (!radix_have(tree_root, wobj)) {
+			radix_add(tree_root, wobj);
 			printf("%s/%s*FILE\n", wlib, wobj);
-			if (getobjects(ftp, wlib, wobj) == -1)
+			if (getobjects(tree_root, ftp, wlib, wobj) == -1)
 				return 1;
 		}
 	}
@@ -413,10 +426,12 @@ int main_analyze(int argc, char **argv)
 	struct ftp ftp;
 	int c, argind;
 	int rc;
+	int exit_code;
 	char lib[Z_LIBSIZ];
 	char obj[Z_OBJSIZ];
 	char *p;
 
+	struct radix_entry tree_root;
 	memset(&tree_root, 0, sizeof(struct radix_entry));
 	tree_root.name = NULL;
 	ftp_init(&ftp);
@@ -463,6 +478,7 @@ int main_analyze(int argc, char **argv)
 		return 1;
 	}
 
+	exit_code = 0;
 	for (argind = optind; argind < argc; argind++) {
 		p = strchr(argv[argind], '/');
 		if (p == NULL) {
@@ -479,12 +495,12 @@ int main_analyze(int argc, char **argv)
 		strncpy(obj, p + 1, sizeof(obj) - 1);
 		obj[sizeof(obj) - 1] = '\0';
 
-		if (getobjects(&ftp, lib, obj) != 0) {
-			ftp_close(&ftp);
-			return 1;
+		if (getobjects(&tree_root, &ftp, lib, obj) != 0) {
+			exit_code = 1;
 		}
 	}
 
 	ftp_close(&ftp);
-	return 0;
+	radix_cleanup(&tree_root);
+	return exit_code;
 }
