@@ -6,9 +6,10 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
+#include <stdlib.h>
 
 char *program_name;
-#define PROGRAM_VERSION	"2.5"
+#define PROGRAM_VERSION	"2.6"
 
 int main_copy(int, char **);
 int main_analyze(int, char **);
@@ -38,17 +39,26 @@ static void print_help(FILE *fp)
 /* print error prefixed with "program_name" */
 void print_error(char *format, ...)
 {
-	va_list ap;
-	char buf[BUFSIZ];
+	va_list ap, ap2;
+	char *buf;
 	int len;
 
-	len = snprintf(buf, sizeof(buf), "%s: ", program_name);
-
 	va_start(ap, format);
-	vsnprintf(buf + len, sizeof(buf) - len, format, ap);
-	va_end(ap);
+	va_copy(ap2, ap);
+	len = vsnprintf(NULL, 0, format, ap2);
+
+	buf = malloc(len + strlen(program_name) + 1);
+	if (buf == NULL)
+		goto exit;
+
+	len = sprintf(buf, "%s: ", program_name);
+	vsprintf(buf + len, format, ap);
 
 	fputs(buf, stderr);
+
+exit:	free(buf);
+	va_end(ap);
+	va_end(ap2);
 }
 
 int main(int argc, char **argv)
