@@ -413,7 +413,7 @@ int ftp_recvans(struct ftp *ftp, struct ftpansbuf *ansbuf)
 	 */
 	ansbuf->continues = (buf[3] == '-');
 	memcpy(ansbuf->buffer, buf + 4, recvlen - 4);
-	ansbuf->buffer[recvlen - 4 + 1] = '\0';
+	ansbuf->buffer[recvlen - 4] = '\0';
 
 	return 0;
 }
