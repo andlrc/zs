@@ -256,8 +256,8 @@ static int uploadfile(struct targetopt *targetopt, struct ftp *ftp,
 		    || sscanf(ftpans.buffer, "%d objects restored.",
 			      &rstcnt) != 1
 		    || rstcnt != 1) {
-			print_error("failed to restore object: %s\n",
-				    ftp_strerror(ftp));
+			print_error("failed to restore object: %s",
+				    ftpans.buffer);
 			return 1;
 		}
 	}
