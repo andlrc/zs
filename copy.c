@@ -188,9 +188,6 @@ static int downloadobj(struct sourceopt *sourceopt, struct ftp *ftp,
 	}
 	close(destfd);
 
-	printf("downloading %s/%s%s to %s\n", lib, obj->obj, type,
-	       localname);
-
 	if (ftp_get(ftp, localname, remotename) != 0) {
 		unlink(localname);
 		print_error("failed to get file: %s\n", ftp_strerror(ftp));
@@ -223,7 +220,6 @@ static int uploadfile(struct targetopt *targetopt, struct ftp *ftp,
 
 	/* ftp_put can change remotename */
 	strcpy(remotename, "/tmp/zs-put");
-	printf("uploading %s to %s\n", localname, remotename);
 
 	if (ftp_put(ftp, localname, remotename) != 0) {
 		unlink(localname);
