@@ -17,16 +17,16 @@
 
 /* error message follow the index of "enum ftp_errors" */
 static const char *ftp_error_messages[] = {
-	"Success",
-	"Destination buffer would overflow",
-	"Timed Out",
-	"unknown reply status",
-	"Bad response from server",
-	"Multi line reply from server",
-	"Not Logged In",
-	"Reading from socket would block",
-	"Unknown variable",
-	"Missing host"
+	[FTP_SUCCESS]		= "Success",
+	[EFTP_OVERFLOW]		= "Destination buffer would overflow",
+	[EFTP_TIMEDOUT]		= "Timed Out",
+	[EFTP_BADRPLY]		= "Unknown reply status",
+	[EFTP_BADRESP]		= "Bad response from server",
+	[EFTP_CONTRESP]		= "Multi line reply from server",
+	[EFTP_NOLOGIN]		= "Not Logged In",
+	[EFTP_WOULDBLOCK]	= "Reading from socket would block",
+	[EFTP_BADVAR]		= "Unknown variable",
+	[EFTP_NOHOST]		= "Missing host"
 };
 
 /* print debug information based on the verbosity level set */
