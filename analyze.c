@@ -19,233 +19,7 @@
 #include "util.h"
 #include "analyze.h"
 
-
-/*
- * Pseudo Radix tree:
- *             _____|_____
- *             |          |
- *            CSM     NAVUSRET00
- *        _____|_____
- *        |         |
- *       HDR       STG
- *   _____|_____    |____
- *   |         |   ET0   |
- * ET00      RL01 __|__ RL00
- *                |   |
- *                0   1
- *
- * Example tree:
- * {
- *   name => "",
- *   edges => [
- *     {
- *       name => "CSM",
- *       edges => [
- *         {
- *           name => "HDR",
- *           edges => [
- *             {
- *               name => "ET00",
- *               edges => null
- *             },
- *             {
- *               name => "RL01",
- *               edges => null
- *             }
- *           ]
- *         },
- *         {
- *           name => "STG",
- *           edges => [
- *             {
- *               name => "ET0",
- *               edges => [
- *                 {
- *                   name => "0",
- *                   edges => null
- *                 },
- *                 {
- *                   name => "1",
- *                   edges => null
- *                 }
- *               ]
- *             },
- *             {
- *               name => "RL00",
- *               edges => null
- *             }
- *           ]
- *         }
- *       ]
- *     },
- *     {
- *       name => "NAVUSRET00",
- *       edges => null
- *     }
- *   ]
- * }
- */
-
-struct radix_edges {
-	struct radix_entry **list;
-#define INIT_EDGE_SIZE	8
-	unsigned int size;
-	unsigned int length;
-};
-
-struct radix_entry {
-	char *name;
-	struct radix_edges edges;
-};
-
-static struct radix_entry *create_edge(struct radix_entry *tnode, char *key)
-{
-	unsigned int size;
-	struct radix_entry *p, *enode;
-
-	if (tnode->edges.length == 0) {
-		tnode->edges.size = INIT_EDGE_SIZE;
-		tnode->edges.length = 0;
-		tnode->edges.list = malloc(sizeof(struct radix_entry *) * tnode->edges.size);
-	} else if (tnode->edges.length == tnode->edges.size) {
-		size = tnode->edges.size * 2;
-		p = realloc(tnode->edges.list, sizeof(struct radix_entry *) *tnode->edges.size);
-		if (p == NULL) {
-			return NULL;
-		}
-		tnode->edges.size = size;
-	}
-
-	enode = malloc(sizeof(struct radix_entry));
-	memset(enode, 0, sizeof(struct radix_entry));
-	enode->name = strdup(key);
-
-
-	tnode->edges.list[tnode->edges.length++] = enode;
-
-	return enode;
-}
-
-/* returns length of prefix if match is found, otherwise 0 */
-static int lookup_edge(struct radix_entry *tnode,
-		       struct radix_entry **enode, char *key)
-{
-	unsigned int i;
-	char *pnam, *pkey;
-
-	for (i = 0; i < tnode->edges.length; i++) {
-		*enode = tnode->edges.list[i];
-		pnam = (*enode)->name;
-		if (*pnam == *key) {
-			for (pkey = key; *pnam == *pkey; pnam++, pkey++) {
-				if (*pkey == '\0')
-					break;
-			}
-
-			/* "key" was only part of the found edge */
-			if (*pnam != '\0') {
-				return 0;
-			}
-
-			return pkey - key;
-		}
-	}
-
-	return 0;	/* not found */
-}
-
-static int goc_edge(struct radix_entry *tnode,
-		    struct radix_entry **enode, char *key)
-{
-	struct radix_entry *spnode;
-	unsigned int i;
-	char *pnam, *pkey;
-
-	for (i = 0; i < tnode->edges.length; i++) {
-		*enode = tnode->edges.list[i];
-		pnam = (*enode)->name;
-		if (*pnam == *key) {
-			for (pkey = key; *pnam == *pkey; pnam++, pkey++) {
-				if (*pkey == '\0')
-					break;
-			}
-
-			/* split */
-			if (*pnam != '\0') {
-				spnode = malloc(sizeof(struct radix_entry));
-				spnode->edges.size = INIT_EDGE_SIZE;
-				spnode->edges.length = 0;
-				spnode->edges.list = malloc(sizeof(struct radix_entry *) * spnode->edges.size);
-				spnode->name = strndup((*enode)->name, pnam - (*enode)->name);
-				tnode->edges.list[i] = spnode;
-
-				/* create previous edge */
-				spnode->edges.list[spnode->edges.length] = *enode;
-				pnam = strdup(pnam);
-				free(spnode->edges.list[spnode->edges.length]->name);
-				spnode->edges.list[spnode->edges.length]->name = pnam;
-				spnode->edges.length++;
-
-				/* create our edge */
-				*enode = create_edge(spnode, pkey);
-			}
-
-			return pkey - key;
-		}
-	}
-
-	create_edge(tnode, key);
-	return strlen(key);
-}
-
-static bool radix_have(struct radix_entry *tnode, char *key)
-{
-	char *pkey;
-	struct radix_entry *enode;
-	int rc;
-
-	pkey = key;
-
-	while (tnode->edges.length && *pkey != '\0') {
-		rc = lookup_edge(tnode, &enode, pkey);
-		if (rc == 0) {	/* not found */
-			return false;
-		}
-		tnode = enode;
-		pkey += rc;
-	}
-
-	return (tnode && *pkey == '\0');
-}
-
-static bool radix_add(struct radix_entry *tnode, char *key)
-{
-	char *pkey;
-	struct radix_entry *enode;
-
-	pkey = key;
-
-	while (tnode->edges.length && *pkey != '\0') {
-		pkey += goc_edge(tnode, &enode, pkey);
-		tnode = enode;
-	}
-
-	if (*pkey != '\0') {
-		create_edge(tnode, pkey);
-	}
-
-	return (tnode && *pkey == '\0');
-}
-
-static void radix_cleanup(struct radix_entry *tnode)
-{
-	for (unsigned int i = 0; i < tnode->edges.length; i++) {
-		radix_cleanup(tnode->edges.list[i]);
-		free(tnode->edges.list[i]);
-	}
-	free(tnode->name);
-	free(tnode->edges.list);
-}
+static int getobjects(struct ctx *ctx, char *lib, char *obj);
 
 static void print_help(void)
 {
@@ -322,10 +96,40 @@ static int freadcmd(struct ftp *ftp, char *cmd, char *fromfile)
 	return fd;
 }
 
-static int getobjects(struct radix_entry *tree_root, struct ftp *ftp, char *lib, char *obj)
+static int processobj(struct ctx *ctx, char *lib, char *obj)
+{
+	unsigned int size, i;
+	char **p;
+
+	/* lookup */
+	for (i = 0; i < ctx->tablen; i++) {
+		if (strcmp(ctx->tab[i], obj) == 0)
+			return 0; /* found */
+	}
+
+	/* realloc */
+	if (ctx->tablen == ctx->tabsiz) {
+		size = ctx->tabsiz * 2;
+		p = realloc(ctx->tab, size);
+		if (p == NULL)
+			return 1;
+		ctx->tabsiz = size;
+	}
+
+	/* add */
+	ctx->tab[ctx->tablen++] = strdup(obj);
+	printf("%s/%s*FILE\n", lib, obj);
+
+	/* process object */
+	if (getobjects(ctx, lib, obj) != 0)
+		return 1;
+
+	return 0;
+}
+
+static int getobjects(struct ctx *ctx, char *lib, char *obj)
 {
 	struct dspdbrtab dbrtab;
-	struct dspfdtab fdtab;
 	int rc;
 	int fd;
 	char cmd[BUFSIZ];
@@ -333,8 +137,7 @@ static int getobjects(struct radix_entry *tree_root, struct ftp *ftp, char *lib,
 	char wobj[Z_OBJSIZ];
 	char *p;
 
-	memset(&fdtab, 0, sizeof(struct dspfdtab));
-	memset(&dbrtab, 0, sizeof(struct dspdbrtab));
+	memset(&dbrtab, -1, sizeof(struct dspdbrtab));
 	rc = 0;
 	fd = 0;
 	memset(cmd, 0, sizeof(cmd));
@@ -342,57 +145,19 @@ static int getobjects(struct radix_entry *tree_root, struct ftp *ftp, char *lib,
 	memset(wobj, 0, sizeof(wobj));
 	p = NULL;
 
-	/* DSPFD */
-	snprintf(cmd, sizeof(cmd),
-		 "RCMD DSPFD FILE(%s/%s) TYPE(*ACCPTH) OUTPUT(*OUTFILE) OUTFILE(QTEMP/FD)\r\n",
-		 lib, obj);
-
-	fd = freadcmd(ftp, cmd, "QTEMP/FD");
-	if (fd == -1)
-		return 1;
-
-	rc = ftp_cmd(ftp, "RCMD DLTF FILE(QTEMP/FD)\r\n");
-	if (ftp_dfthandle(ftp, rc, 250) == -1) {
-		print_error("failed to remove DFPFD file: %s\n",
-			    ftp_strerror(ftp));
-		return 1;
-	}
-
-	while (read(fd, &fdtab, sizeof(struct dspfdtab))
-		   == sizeof(struct dspfdtab)) {
-		snprintf(wlib, sizeof(wlib), "%s", fdtab.apbol);
-		if ((p = strchr(wlib, ' ')) != NULL)
-			*p = '\0';
-		snprintf(wobj, sizeof(wobj), "%s", fdtab.apbof);
-		if ((p = strchr(wobj, ' ')) != NULL)
-			*p = '\0';
-
-		/* no more */
-		if (*wlib == '\0' || *wobj == '\0')
-			break;
-
-		if (!radix_have(tree_root, wobj)) {
-			radix_add(tree_root, wobj);
-			printf("%s/%s*FILE\n", wlib, wobj);
-			if (getobjects(tree_root, ftp, wlib, wobj) == -1)
-				return 1;
-		}
-	}
-	close(fd);
-
 	/* DSPDBR */
 	snprintf(cmd, sizeof(cmd),
 		 "RCMD DSPDBR FILE(%s/%s) OUTPUT(*OUTFILE) OUTFILE(QTEMP/DBR)\r\n",
 		 lib, obj);
 
-	fd = freadcmd(ftp, cmd, "QTEMP/DBR");
+	fd = freadcmd(&ctx->ftp, cmd, "QTEMP/DBR");
 	if (fd == -1)
 		return 1;
 
-	rc = ftp_cmd(ftp, "RCMD DLTF FILE(QTEMP/DBR)\r\n");
-	if (ftp_dfthandle(ftp, rc, 250) == -1) {
+	rc = ftp_cmd(&ctx->ftp, "RCMD DLTF FILE(QTEMP/DBR)\r\n");
+	if (ftp_dfthandle(&ctx->ftp, rc, 250) == -1) {
 		print_error("failed to remove DSPDBR file: %s\n",
-			    ftp_strerror(ftp));
+			    ftp_strerror(&ctx->ftp));
 		return 1;
 	}
 
@@ -409,12 +174,8 @@ static int getobjects(struct radix_entry *tree_root, struct ftp *ftp, char *lib,
 		if (*wlib == '\0' || *wobj == '\0')
 			break;
 
-		if (!radix_have(tree_root, wobj)) {
-			radix_add(tree_root, wobj);
-			printf("%s/%s*FILE\n", wlib, wobj);
-			if (getobjects(tree_root, ftp, wlib, wobj) == -1)
-				return 1;
-		}
+		if (processobj(ctx, wlib, wobj) != 0)
+			return 1;
 	}
 	close(fd);
 
@@ -423,7 +184,7 @@ static int getobjects(struct radix_entry *tree_root, struct ftp *ftp, char *lib,
 
 int main_analyze(int argc, char **argv)
 {
-	struct ftp ftp;
+	struct ctx ctx;
 	int c, argind;
 	int rc;
 	int exit_code;
@@ -431,10 +192,15 @@ int main_analyze(int argc, char **argv)
 	char obj[Z_OBJSIZ];
 	char *p;
 
-	struct radix_entry tree_root;
-	memset(&tree_root, 0, sizeof(struct radix_entry));
-	tree_root.name = NULL;
-	ftp_init(&ftp);
+	ctx.tab = malloc(sizeof(char *) * INIT_TAB_SIZE);
+	if (!ctx.tab) {
+		print_error("failed to allocate table\n");
+		return 1;
+	}
+	ctx.tablen = 0;
+	ctx.tabsiz = INIT_TAB_SIZE;
+
+	ftp_init(&ctx.ftp);
 
 	while ((c = getopt(argc, argv, "hvs:u:p:m:c:")) != -1) {
 		switch (c) {
@@ -442,22 +208,22 @@ int main_analyze(int argc, char **argv)
 			print_help();
 			return 0;
 		case 'v':	/* verbosity */
-			ftp_set_variable(&ftp, FTP_VAR_VERBOSE, "+1");
+			ftp_set_variable(&ctx.ftp, FTP_VAR_VERBOSE, "+1");
 			break;
 		case 's':	/* source host */
-			ftp_set_variable(&ftp, FTP_VAR_HOST, optarg);
+			ftp_set_variable(&ctx.ftp, FTP_VAR_HOST, optarg);
 			break;
 		case 'u':	/* source user */
-			ftp_set_variable(&ftp, FTP_VAR_USER, optarg);
+			ftp_set_variable(&ctx.ftp, FTP_VAR_USER, optarg);
 			break;
 		case 'p':	/* source port */
-			ftp_set_variable(&ftp, FTP_VAR_PORT, optarg);
+			ftp_set_variable(&ctx.ftp, FTP_VAR_PORT, optarg);
 			break;
 		case 'm':	/* source max tries */
-			ftp_set_variable(&ftp, FTP_VAR_MAXTRIES, optarg);
+			ftp_set_variable(&ctx.ftp, FTP_VAR_MAXTRIES, optarg);
 			break;
 		case 'c':	/* source config */
-			rc = util_parsecfg(&ftp, optarg);
+			rc = util_parsecfg(&ctx.ftp, optarg);
 			if (rc != 0)
 				print_error("failed to parse config file: %s\n",
 					    util_strerror(rc));
@@ -472,9 +238,9 @@ int main_analyze(int argc, char **argv)
 		return 2;
 	}
 
-	if (ftp_connect(&ftp) == -1) {
+	if (ftp_connect(&ctx.ftp) == -1) {
 		print_error("failed to connect to server: %s\n",
-			    ftp_strerror(&ftp));
+			    ftp_strerror(&ctx.ftp));
 		return 1;
 	}
 
@@ -495,12 +261,12 @@ int main_analyze(int argc, char **argv)
 		strncpy(obj, p + 1, sizeof(obj) - 1);
 		obj[sizeof(obj) - 1] = '\0';
 
-		if (getobjects(&tree_root, &ftp, lib, obj) != 0) {
+		if (getobjects(&ctx, lib, obj) != 0) {
 			exit_code = 1;
 		}
 	}
 
-	ftp_close(&ftp);
-	radix_cleanup(&tree_root);
+	free(ctx.tab);
+	ftp_close(&ctx.ftp);
 	return exit_code;
 }
