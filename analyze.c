@@ -52,7 +52,7 @@ static int freadcmd(struct ftp *ftp, char *cmd, char *fromfile)
 		return -1;
 	}
 
-	/* TODO: unique file */
+	/* FIXME: ensure unique file on remote */
 	snprintf(remotename, sizeof(remotename), "/tmp/zs-readcmd");
 	rc = ftp_cmd(ftp, "RCMD CPYTOIMPF FROMFILE(%s) TOSTMF('%s') MBROPT(*REPLACE) STMFCCSID(1208) RCDDLM(*LF) DTAFMT(*FIXED)\r\n",
 		     fromfile, remotename);
@@ -62,7 +62,7 @@ static int freadcmd(struct ftp *ftp, char *cmd, char *fromfile)
 		return -1;
 	}
 
-	/* creat local file */
+	/* create local file */
 	strcpy(localname, "/tmp/zs-XXXXXX");
 	fd = mkstemp(localname);
 	if (fd == -1) {
@@ -71,17 +71,18 @@ static int freadcmd(struct ftp *ftp, char *cmd, char *fromfile)
 		return -1;
 	}
 
-	/*
-	 * download remote file => local file
-	 * remote local file asap, as it will then be removed when "close(fd)"
-	 * is called.
-	 */
+	/* download */
 	if (ftp_get(ftp, localname, remotename) != 0) {
 		print_error("failed to get file: %s\n", ftp_strerror(ftp));
 		unlink(localname);
 		close(fd);
 		return -1;
 	}
+
+	/*
+	 * delete the "localname"-file already,
+	 * as it is then GC'd when "close(fd)" is called
+	 */
 	unlink(localname);
 
 	/* delete remote */
@@ -110,9 +111,11 @@ static int processobj(struct ctx *ctx, char *lib, char *obj)
 	/* realloc */
 	if (ctx->tablen == ctx->tabsiz) {
 		size = ctx->tabsiz * 2;
-		p = realloc(ctx->tab, size);
-		if (p == NULL)
+		p = realloc(ctx->tab, sizeof(char *) * size);
+		if (p == NULL) {
+			print_error("failed to re-allocate table\n");
 			return 1;
+		}
 		ctx->tabsiz = size;
 	}
 
