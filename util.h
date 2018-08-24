@@ -20,4 +20,6 @@ int util_parselibl(struct sourceopt *, char *);
 int util_parsetypes(struct sourceopt *, char *);
 int util_parseobj(struct object *, char *);
 const char *util_strerror(int errnum);
+void util_guessrelease(char *release, struct ftp *sourceftp,
+		       struct ftp *targetftp);
 #endif

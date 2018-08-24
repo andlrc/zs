@@ -205,3 +205,41 @@ const char *util_strerror(int errnum)
 		return util_error_messages[errnum];
 	}
 }
+
+/*
+ * guess the targets version of OS.
+ * if the source is newer than the target when "release" will be populated with
+ * the targets release name, i.e "V7R1M0"
+ */
+void util_guessrelease(char *release, struct ftp *sourceftp,
+		       struct ftp *targetftp)
+{
+	char sourcerelease[Z_RLSSIZ];
+	char targetrelease[Z_RLSSIZ];
+	char format[BUFSIZ];
+	struct ftpansbuf ftpans;
+	int rc;
+
+	snprintf(format, sizeof(format),
+		 " OS/400 is the remote operating system. The TCP/IP version is \"%%%lu[a-zA-Z0-9]\".",
+		 sizeof(sourcerelease) - 1);
+
+	memset(&ftpans, 0, sizeof(struct ftpansbuf));
+	rc = ftp_cmd_r(sourceftp, &ftpans, "SYST\r\n");
+	if (ftp_dfthandle_r(sourceftp, &ftpans, rc, 215) == 0) {
+		if (sscanf(ftpans.buffer, format, sourcerelease) != 1)
+			return;
+	}
+
+	memset(&ftpans, 0, sizeof(struct ftpansbuf));
+	rc = ftp_cmd_r(targetftp, &ftpans, "SYST\r\n");
+	if (ftp_dfthandle_r(targetftp, &ftpans, rc, 215) == 0) {
+		if (sscanf(ftpans.buffer, format, targetrelease) != 1)
+			return;
+	}
+
+	if (strcmp(sourcerelease, targetrelease) > 0) {
+		strcpy(release, targetrelease);
+	}
+}
+

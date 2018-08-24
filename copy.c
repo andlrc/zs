@@ -43,45 +43,8 @@ static void print_help(void)
 	       "  -v            level of verbosity, can be set multiple times\n"
 	       "  -h            show this help message and exit\n"
 	       "\n"
-	       "See zs-analyze(1) for more information\n",
+	       "See zs-copy(1) for more information\n",
 	       program_name);
-}
-
-/*
- * guess the targets version of OS.
- * if the source is newer than the target when "release" will be populated with
- * the targets release name, i.e "V7R1M0"
- */
-static void guessrelease(char *release, struct ftp *sourceftp,
-			 struct ftp *targetftp)
-{
-	char sourcerelease[Z_RLSSIZ];
-	char targetrelease[Z_RLSSIZ];
-	char format[BUFSIZ];
-	struct ftpansbuf ftpans;
-	int rc;
-
-	snprintf(format, sizeof(format),
-		 " OS/400 is the remote operating system. The TCP/IP version is \"%%%lu[a-zA-Z0-9]\".",
-		 sizeof(sourcerelease) - 1);
-
-	memset(&ftpans, 0, sizeof(struct ftpansbuf));
-	rc = ftp_cmd_r(sourceftp, &ftpans, "SYST\r\n");
-	if (ftp_dfthandle_r(sourceftp, &ftpans, rc, 215) == 0) {
-		if (sscanf(ftpans.buffer, format, sourcerelease) != 1)
-			return;
-	}
-
-	memset(&ftpans, 0, sizeof(struct ftpansbuf));
-	rc = ftp_cmd_r(targetftp, &ftpans, "SYST\r\n");
-	if (ftp_dfthandle_r(targetftp, &ftpans, rc, 215) == 0) {
-		if (sscanf(ftpans.buffer, format, targetrelease) != 1)
-			return;
-	}
-
-	if (strcmp(sourcerelease, targetrelease) > 0) {
-		strcpy(release, targetrelease);
-	}
 }
 
 static int downloadobj(struct sourceopt *sourceopt, struct ftp *ftp,
@@ -459,7 +422,7 @@ int main_copy(int argc, char **argv)
 
 	/* try to guess target release if none is specified */
 	if (*sourceopt.release == '\0') {
-		guessrelease(sourceopt.release, &sourceftp, &targetftp);
+		util_guessrelease(sourceopt.release, &sourceftp, &targetftp);
 	}
 	/* ... fallback to *CURRENT */
 	if (*sourceopt.release == '\0') {
