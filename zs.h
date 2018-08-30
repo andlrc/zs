@@ -16,27 +16,29 @@
 #define Z_RLSSIZ	11
 
 struct object {
-	char lib[Z_LIBSIZ];
-	char obj[Z_OBJSIZ];
-	char type[Z_TYPESIZ];
+    char            lib[Z_LIBSIZ];
+    char            obj[Z_OBJSIZ];
+    char            type[Z_TYPESIZ];
 };
 
 struct sourceopt {
-	int pipe;
-	char release[Z_RLSSIZ];
-	char libl[Z_LIBLMAX][Z_LIBSIZ];
-	struct object objects[Z_OBJMAX];
-	char types[Z_TYPEMAX][Z_TYPESIZ];
+    int             pipe;
+    char            release[Z_RLSSIZ];
+    char            libl[Z_LIBLMAX][Z_LIBSIZ];
+    struct object   objects[Z_OBJMAX];
+    char            types[Z_TYPEMAX][Z_TYPESIZ];
 };
 
 struct targetopt {
-	int pipe;
-	char lib[Z_LIBSIZ];
+    int             pipe;
+    char            lib[Z_LIBSIZ];
 };
 
-void print_error(char *format, ...);
+void            print_error(char *format, ...);
 
-/* set by main.c */
-char *program_name;
+/*
+ * set by main.c
+ */
+char           *program_name;
 
 #endif

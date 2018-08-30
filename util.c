@@ -13,13 +13,15 @@
 #include "zs.h"
 #include "util.h"
 
-/* error message follow the index of "enum util_errors" */
+/*
+ * error message follow the index of "enum util_errors"
+ */
 static const char *util_error_messages[] = {
-	"Success",
-	"Missing value for option",
-	"Unknown option",
-	"Maximum libraries reached",
-	"Maximum types reached"
+    [EUTIL_SYSTEM] = "Success",
+    [EUTIL_NOVAL] = "Missing value for option",
+    [EUTIL_BADKEY] = "Unknown option",
+    [EUTIL_LIBOVERFLOW] = "Maximum libraries reached",
+    [EUTIL_TYPEOVERFLOW] = "Maximum types reached"
 };
 
 /*
@@ -30,96 +32,99 @@ static const char *util_error_messages[] = {
  * ; comment
  * see "zs(1)" for more information about the config file format
  */
-int util_parsecfg(struct ftp *ftp, char *filename)
+int
+util_parsecfg(struct ftp *ftp, char *filename)
 {
-	/* ($option <sp> $value <nl>)* */
-	int returncode;
-	FILE *fp;
-	char *line, *pline;
-	char *key;
-	size_t linesiz;
-	char filenamebuf[BUFSIZ];
+    /*
+     * ($option <sp> $value <nl>)*
+     */
+    int             returncode;
+    FILE           *fp;
+    char           *line;
+    char           *key;
+    char           *val;
+    char           *saveptr;
+    size_t          linesiz;
+    char            filenamebuf[BUFSIZ];
 
-	line = NULL;
-	linesiz = 0;
+    line = NULL;
+    linesiz = 0;
 
-	/* use /etc/zs/$FILE.conf instead */
-	if (!strchr(filename, '/') && !strchr(filename, '.')) {
-		snprintf(filenamebuf, sizeof(filenamebuf),
-			 "/etc/zs/%s.conf", filename);
-		filename = filenamebuf;
+    /*
+     * use /etc/zs/$FILE.conf instead
+     */
+    if (!strchr(filename, '/') && !strchr(filename, '.')) {
+	snprintf(filenamebuf, sizeof(filenamebuf),
+		 "/etc/zs/%s.conf", filename);
+	filename = filenamebuf;
+    }
+
+    fp = fopen(filename, "r");
+    if (fp == NULL) {
+	return EUTIL_SYSTEM;
+    }
+
+    returncode = 0;
+    while (getline(&line, &linesiz, fp) > 0) {
+	if (*line == '#' || *line == ';' || *line == '\0')
+	    continue;
+
+	key = strtok_r(line, " \t", &saveptr);
+	val = strtok_r(NULL, "\n", &saveptr);
+	while (isspace(*val))
+	    val++;
+
+	if (*val == '\0') {
+	    returncode = EUTIL_NOVAL;
+	    goto exit;
 	}
 
-	fp = fopen(filename, "r");
-	if (fp == NULL) {
-		return EUTIL_SYSTEM;
+	if (strcmp(key, "server") == 0 || strcmp(key, "host") == 0) {
+	    ftp_set_variable(ftp, FTP_VAR_HOST, val);
+	} else if (strcmp(key, "user") == 0
+		   || strcmp(key, "username") == 0) {
+	    ftp_set_variable(ftp, FTP_VAR_USER, val);
+	} else if (strcmp(key, "password") == 0) {
+	    ftp_set_variable(ftp, FTP_VAR_PASSWORD, val);
+	} else if (strcmp(key, "port") == 0) {
+	    ftp_set_variable(ftp, FTP_VAR_PORT, val);
+	} else if (strcmp(key, "tries") == 0
+		   || strcmp(key, "maxtries") == 0) {
+	    ftp_set_variable(ftp, FTP_VAR_MAXTRIES, val);
+	} else {
+	    returncode = EUTIL_BADKEY;
+	    goto exit;
 	}
+    }
 
-	returncode = 0;
-	while (getline(&line, &linesiz, fp) > 0) {
-		pline = line;
-
-		while (isspace(*pline))
-			pline++;
-
-		if (*pline == '#' || *pline == ';' || *pline == '\0')
-			continue;
-
-		key = strsep(&pline, " \t");
-		if (*pline == '\0') {
-			returncode = EUTIL_NOVAL;
-			goto exit;
-		}
-
-		while (isspace(*pline))
-			pline++;
-
-		*(strchr(pline, '\n')) = '\0';
-
-		if (strcmp(key, "server") == 0 || strcmp(key, "host") == 0) {
-			ftp_set_variable(ftp, FTP_VAR_HOST, pline);
-		} else if (strcmp(key, "user") == 0
-			   || strcmp(key, "username") == 0) {
-			ftp_set_variable(ftp, FTP_VAR_USER, pline);
-		} else if (strcmp(key, "password") == 0) {
-			ftp_set_variable(ftp, FTP_VAR_PASSWORD, pline);
-		} else if (strcmp(key, "port") == 0) {
-			ftp_set_variable(ftp, FTP_VAR_PORT, pline);
-		} else if (strcmp(key, "tries") == 0
-			   || strcmp(key, "maxtries") == 0) {
-			ftp_set_variable(ftp, FTP_VAR_MAXTRIES, pline);
-		} else {
-			returncode = EUTIL_BADKEY;
-			goto exit;
-		}
-	}
-
-exit:	free(line);
-	fclose(fp);
-	return returncode;
+  exit:free(line);
+    fclose(fp);
+    return returncode;
 }
 
 /*
  * parse library list
  * split the input libl on comma and store in "sourceopt->libl"
  */
-int util_parselibl(struct sourceopt *sourceopt, char *optlibl)
+int
+util_parselibl(struct sourceopt *sourceopt, char *optlibl)
 {
-	char *saveptr, *p;
-	int i = 0;
+    char           *saveptr;
+    char           *p;
+    int             i = 0;
 
-	p = strtok_r(optlibl, ",", &saveptr);
-	do {
-		if (i == Z_LIBLMAX) {
-			return EUTIL_LIBOVERFLOW;
-		}
+    p = strtok_r(optlibl, ",", &saveptr);
+    do {
+	if (i == Z_LIBLMAX) {
+	    return EUTIL_LIBOVERFLOW;
+	}
 
-		strncpy(sourceopt->libl[i], p, Z_LIBSIZ);
-		sourceopt->libl[i][Z_LIBSIZ - 1] = '\0';
-		i++;
-	} while ((p = strtok_r(NULL, ",", &saveptr)) != NULL);
+	strncpy(sourceopt->libl[i], p, Z_LIBSIZ);
+	sourceopt->libl[i][Z_LIBSIZ - 1] = '\0';
+	i++;
+    } while ((p = strtok_r(NULL, ",", &saveptr)) != NULL);
 
-	return 0;
+    return 0;
 }
 
 /*
@@ -128,30 +133,36 @@ int util_parselibl(struct sourceopt *sourceopt, char *optlibl)
  * $types = type1,type2,type3
  * $type  = *type | type
  */
-int util_parsetypes(struct sourceopt *sourceopt, char *opttypes)
+int
+util_parsetypes(struct sourceopt *sourceopt, char *opttypes)
 {
-	char *saveptr, *p, *dest;
-	int i = 0;
+    char           *saveptr;
+    char           *p;
+    char           *dest;
+    int             i;
 
-	p = strtok_r(opttypes, ",", &saveptr);
-	do {
-		if (i == Z_TYPEMAX) {
-			return EUTIL_TYPEOVERFLOW;
-		}
+    i = 0;
+    p = strtok_r(opttypes, ",", &saveptr);
+    do {
+	if (i == Z_TYPEMAX) {
+	    return EUTIL_TYPEOVERFLOW;
+	}
 
-		dest = sourceopt->types[i];
+	dest = sourceopt->types[i];
 
-		/* add leading asterisk if omitted */
-		if (*p != '*') {
-			*dest++ = '*';
-		}
+	/*
+	 * add leading asterisk if omitted
+	 */
+	if (*p != '*') {
+	    *dest++ = '*';
+	}
 
-		strncpy(dest, p, Z_TYPESIZ - (dest - sourceopt->types[i]));
-		sourceopt->types[i][Z_TYPESIZ - 1] = '\0';
-		i++;
-	} while ((p = strtok_r(NULL, ",", &saveptr)) != NULL);
+	strncpy(dest, p, Z_TYPESIZ - (dest - sourceopt->types[i]));
+	sourceopt->types[i][Z_TYPESIZ - 1] = '\0';
+	i++;
+    } while ((p = strtok_r(NULL, ",", &saveptr)) != NULL);
 
-	return 0;
+    return 0;
 }
 
 /*
@@ -161,34 +172,42 @@ int util_parsetypes(struct sourceopt *sourceopt, char *opttypes)
  * $obj  = \w{1,10}
  * $type = \w{1,10}
  */
-int util_parseobj(struct object *obj, char *optobj)
+int
+util_parseobj(struct object *obj, char *optobj)
 {
-	char *saveptr, *p;
+    char           *saveptr;
+    char           *p;
 
-	/* $libl */
-	if (strchr(optobj, '/')) {
-		p = strtok_r(optobj, "/", &saveptr);
-		strncpy(obj->lib, p, Z_LIBSIZ);
-		obj->lib[Z_LIBSIZ - 1] = '\0';
+    /*
+     * $libl
+     */
+    if (strchr(optobj, '/')) {
+	p = strtok_r(optobj, "/", &saveptr);
+	strncpy(obj->lib, p, Z_LIBSIZ);
+	obj->lib[Z_LIBSIZ - 1] = '\0';
 
-		p = strtok_r(NULL, "*", &saveptr);
-	} else {
-		p = strtok_r(optobj, "*", &saveptr);
-	}
+	p = strtok_r(NULL, "*", &saveptr);
+    } else {
+	p = strtok_r(optobj, "*", &saveptr);
+    }
 
-	/* $obj */
-	strncpy(obj->obj, p, Z_OBJSIZ);
-	obj->obj[Z_OBJSIZ - 1] = '\0';
+    /*
+     * $obj
+     */
+    strncpy(obj->obj, p, Z_OBJSIZ);
+    obj->obj[Z_OBJSIZ - 1] = '\0';
 
-	/* $type */
-	p = strtok_r(NULL, "?", &saveptr);
-	if (p != NULL) {
-		*obj->type = '*';
-		strncpy(obj->type + 1, p, Z_TYPESIZ - 1);
-		obj->type[Z_TYPESIZ - 2] = '\0';
-	}
+    /*
+     * $type
+     */
+    p = strtok_r(NULL, "?", &saveptr);
+    if (p != NULL) {
+	*obj->type = '*';
+	strncpy(obj->type + 1, p, Z_TYPESIZ - 1);
+	obj->type[Z_TYPESIZ - 2] = '\0';
+    }
 
-	return 0;
+    return 0;
 }
 
 /*
@@ -196,14 +215,15 @@ int util_parseobj(struct object *obj, char *optobj)
  * should always be called immediately after an error occurred as the value of
  * "errno" cannot change.
  */
-const char *util_strerror(int errnum)
+const char     *
+util_strerror(int errnum)
 {
-	switch (errnum) {
-	case EUTIL_SYSTEM:
-		return strerror(errno);
-	default:
-		return util_error_messages[errnum];
-	}
+    switch (errnum) {
+    case EUTIL_SYSTEM:
+	return strerror(errno);
+    default:
+	return util_error_messages[errnum];
+    }
 }
 
 /*
@@ -211,35 +231,35 @@ const char *util_strerror(int errnum)
  * if the source is newer than the target when "release" will be populated with
  * the targets release name, i.e "V7R1M0"
  */
-void util_guessrelease(char *release, struct ftp *sourceftp,
-		       struct ftp *targetftp)
+void
+util_guessrelease(char *release, struct ftp *sourceftp,
+		  struct ftp *targetftp)
 {
-	char sourcerelease[Z_RLSSIZ];
-	char targetrelease[Z_RLSSIZ];
-	char format[BUFSIZ];
-	struct ftpansbuf ftpans;
-	int rc;
+    char            sourcerelease[Z_RLSSIZ];
+    char            targetrelease[Z_RLSSIZ];
+    char            format[BUFSIZ];
+    struct ftpansbuf ftpans;
+    int             rc;
 
-	snprintf(format, sizeof(format),
-		 " OS/400 is the remote operating system. The TCP/IP version is \"%%%lu[a-zA-Z0-9]\".",
-		 sizeof(sourcerelease) - 1);
+    snprintf(format, sizeof(format),
+	     " OS/400 is the remote operating system. The TCP/IP version is \"%%%lu[a-zA-Z0-9]\".",
+	     sizeof(sourcerelease) - 1);
 
-	memset(&ftpans, 0, sizeof(struct ftpansbuf));
-	rc = ftp_cmd_r(sourceftp, &ftpans, "SYST\r\n");
-	if (ftp_dfthandle_r(sourceftp, &ftpans, rc, 215) == 0) {
-		if (sscanf(ftpans.buffer, format, sourcerelease) != 1)
-			return;
-	}
+    memset(&ftpans, 0, sizeof(struct ftpansbuf));
+    rc = ftp_cmd_r(sourceftp, &ftpans, "SYST\r\n");
+    if (ftp_dfthandle_r(sourceftp, &ftpans, rc, 215) == 0) {
+	if (sscanf(ftpans.buffer, format, sourcerelease) != 1)
+	    return;
+    }
 
-	memset(&ftpans, 0, sizeof(struct ftpansbuf));
-	rc = ftp_cmd_r(targetftp, &ftpans, "SYST\r\n");
-	if (ftp_dfthandle_r(targetftp, &ftpans, rc, 215) == 0) {
-		if (sscanf(ftpans.buffer, format, targetrelease) != 1)
-			return;
-	}
+    memset(&ftpans, 0, sizeof(struct ftpansbuf));
+    rc = ftp_cmd_r(targetftp, &ftpans, "SYST\r\n");
+    if (ftp_dfthandle_r(targetftp, &ftpans, rc, 215) == 0) {
+	if (sscanf(ftpans.buffer, format, targetrelease) != 1)
+	    return;
+    }
 
-	if (strcmp(sourcerelease, targetrelease) > 0) {
-		strcpy(release, targetrelease);
-	}
+    if (strcmp(sourcerelease, targetrelease) > 0) {
+	strcpy(release, targetrelease);
+    }
 }
-
