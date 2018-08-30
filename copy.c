@@ -298,7 +298,7 @@ exit:	free(line);
 
 int main_copy(int argc, char **argv)
 {
-	int c, rc, argind, i;
+	int c, rc, exit_status, argind, i;
 	int childrc, pipefd[2];
 
 	struct sourceopt sourceopt;
@@ -436,28 +436,29 @@ int main_copy(int argc, char **argv)
 	case 0:
 		targetopt.pipe = pipefd[0];
 		close(pipefd[1]);
-		rc = targetmain(&targetopt, &targetftp);
+		exit_status = targetmain(&targetopt, &targetftp);
+
 		close(targetopt.pipe);
-		ftp_close(&targetftp);
-		return rc;
 		break;
 	default:
 		sourceopt.pipe = pipefd[1];
 		close(pipefd[0]);
-		rc = sourcemain(&sourceopt, &sourceftp);
+		exit_status = sourcemain(&sourceopt, &sourceftp);
 
 		/* cleanup */
 		close(sourceopt.pipe);
-		ftp_close(&sourceftp);
 		wait(&childrc);
 		if (WIFEXITED(childrc)) {
-			if (rc == 0) {
-				rc = WEXITSTATUS(childrc);
+			if (exit_status == 0) {
+				exit_status = WEXITSTATUS(childrc);
 			}
 		} else {
-			rc = 1;
+			exit_status = 1;
 		}
-		return rc;
 		break;
 	}
+
+	ftp_close(&sourceftp);
+	ftp_close(&targetftp);
+	return exit_status;
 }
