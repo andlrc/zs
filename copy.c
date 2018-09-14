@@ -75,16 +75,8 @@ downloadobj(struct sourceopt *sourceopt, struct ftp *ftp,
 	    lib = *obj->lib ? obj->lib : sourceopt->libl[i];
 	    type = *obj->type ? obj->type : sourceopt->types[y];
 
-	    if (*lib == '\0')
+	    if (*lib == '\0' || *type == '\0')
 		break;
-
-	    if (*type == '\0') {
-		if (y == 0) {
-		    type = "*ALL";
-		} else {
-		    break;
-		}
-	    }
 
 	    /*
 	     * try to save the object located in $lib
@@ -447,6 +439,13 @@ main_copy(int argc, char **argv)
      */
     if (*sourceopt.release == '\0') {
 	strcpy(sourceopt.release, "*CURRENT");
+    }
+
+    /*
+     * if no types are specified then fallback to *ALL
+     */
+    if (*sourceopt.types[0] == '\0') {
+	strcpy(sourceopt.types[0], "*ALL");
     }
 
     switch (fork()) {
