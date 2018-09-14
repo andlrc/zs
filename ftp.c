@@ -490,6 +490,7 @@ ftp_recvline(struct ftp * ftp, char *resbuf, size_t ressiz)
     char           *pbufnl;
     char           *ptmp;
     size_t          nloffset;
+    ssize_t         recvlen;
 
     /*
      * allocate temporary storage
@@ -506,8 +507,7 @@ ftp_recvline(struct ftp * ftp, char *resbuf, size_t ressiz)
     }
 
     while ((pbufnl = strstr(ftp->recvline.buffer, "\r\n")) == NULL) {
-	ssize_t         recvlen =
-	    ftp_recv(ftp, recvbuf, sizeof(recvbuf), 0);
+	recvlen = ftp_recv(ftp, recvbuf, sizeof(recvbuf), 0);
 	if (recvlen == -1) {
 	    /*
 	     * no line ready just yet
