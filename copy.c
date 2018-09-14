@@ -146,6 +146,10 @@ downloadobj(struct sourceopt *sourceopt, struct ftp *ftp,
 	return 1;
     }
 
+    /*
+     * only the guarantee that "localname" is unique is important
+     * discard the opened file descriptor
+     */
     strcpy(localname, "/tmp/zs-XXXXXX");
     destfd = mkstemp(localname);
     if (destfd == -1) {

@@ -231,8 +231,7 @@ ftp_connect(struct ftp *ftp)
 	return -1;
 
     /*
-     * FIXME: figure out a proper AUTH
-     * AUTH TLS | AUTH SSL
+     * FIXME: AUTH TLS | AUTH SSL
      */
 
     /*
@@ -259,7 +258,7 @@ ftp_connect(struct ftp *ftp)
 }
 
 /*
- * run an ftp command, note each command should be terminated with "\r\n"
+ * run a ftp command, note each command should be terminated with "\r\n"
  */
 int
 ftp_cmd(struct ftp *ftp, char *format, ...)
