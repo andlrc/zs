@@ -141,6 +141,7 @@ ftp_connect(struct ftp *ftp)
     struct addrinfo *res;
     struct addrinfo *ressave;
     int             rc;
+    int             errno_;
     char            sport[6];	/* connection port */
 
     snprintf(sport, sizeof(sport), "%d", ftp->server.port);
@@ -193,6 +194,7 @@ ftp_connect(struct ftp *ftp)
 	return -1;
     }
 
+    errno_ = errno;
     for (ftp->sock = -1, ressave = res; res; res = res->ai_next) {
 	print_debug(ftp, FTP_VERBOSE_DEBUG,
 		    "CONNECT: socket(%d, %d, %d)\n",
@@ -205,6 +207,7 @@ ftp_connect(struct ftp *ftp)
 		    ftp->sock, res->ai_addr, res->ai_addrlen);
 	if (connect(ftp->sock, res->ai_addr, res->ai_addrlen) == 0)
 	    break;		/* success */
+	errno_ = errno;
 	close(ftp->sock);
 	ftp->sock = -1;
     }
@@ -212,6 +215,7 @@ ftp_connect(struct ftp *ftp)
     freeaddrinfo(ressave);
 
     if (ftp->sock == -1) {
+	errno = errno_;
 	ftp->errnum = EFTP_SYSTEM;
 	return -1;
     }
@@ -419,8 +423,11 @@ ssize_t
 ftp_recv(struct ftp * ftp, void *buf, size_t len, int flags)
 {
     ssize_t         rc;
+    int             errno_;
 
     rc = recv(ftp->sock, buf, len, flags);
+    errno_ = errno;
+
     switch (rc) {
     case 0:
 	print_debug(ftp, FTP_VERBOSE_MORE, "RECV: [NOTHING]\n");
@@ -431,6 +438,7 @@ ftp_recv(struct ftp * ftp, void *buf, size_t len, int flags)
 	break;
     }
 
+    errno = errno_;
     return rc;
 }
 
@@ -576,6 +584,7 @@ ftp_put(struct ftp *ftp, char *localname, char *remotename)
     char            buf[BUFSIZ];
     char            resbuf[BUFSIZ];
     ssize_t         reslen;
+    int             errno_;
 
     memset(&ftpans, 0, sizeof(struct ftpansbuf));
     rc = ftp_cmd_r(ftp, &ftpans, "PASV\r\n");
@@ -631,8 +640,10 @@ ftp_put(struct ftp *ftp, char *localname, char *remotename)
     do {
 	reslen = read(localfd, resbuf, sizeof(resbuf));
 	if (reslen == -1 || write(pasvfd, resbuf, reslen) != reslen) {
+	    errno_ = errno;
 	    close(pasvfd);
 	    close(localfd);
+	    errno = errno_;
 	    ftp->errnum = EFTP_SYSTEM;
 	    return -1;
 	}
@@ -668,6 +679,7 @@ ftp_get(struct ftp *ftp, char *localname, char *remotename)
     char            buf[BUFSIZ];
     char            resbuf[BUFSIZ];
     ssize_t         reslen;
+    int             errno_;
 
     memset(&ftpans, 0, sizeof(struct ftpansbuf));
     rc = ftp_cmd_r(ftp, &ftpans, "PASV\r\n");
@@ -718,8 +730,10 @@ ftp_get(struct ftp *ftp, char *localname, char *remotename)
     do {
 	reslen = recv(pasvfd, resbuf, sizeof(resbuf), 0);
 	if (reslen == -1 || write(localfd, resbuf, reslen) != reslen) {
+	    errno_ = errno;
 	    close(pasvfd);
 	    close(localfd);
+	    errno = errno_;
 	    ftp->errnum = EFTP_SYSTEM;
 	    return -1;
 	}
