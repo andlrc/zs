@@ -211,7 +211,8 @@ uploadfile(struct targetopt *targetopt, struct ftp *ftp,
 
     rc = ftp_cmd(ftp, "DELETE %s\n", remotename);
     if (ftp_dfthandle(ftp, rc, 250) == -1) {
-	print_error("failed to remove tempfile: %s\n", ftp_strerror(ftp));
+	print_error("failed to remove remote tempfile: %s\n",
+		    ftp_strerror(ftp));
 	return 1;
     }
 
@@ -299,7 +300,8 @@ targetmain(struct targetopt *targetopt, struct ftp *ftp)
 	}
     }
 
-  exit:free(line);
+  exit:
+    free(line);
     fclose(fp);
 
     return returncode;

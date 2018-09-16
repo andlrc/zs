@@ -97,7 +97,8 @@ util_parsecfg(struct ftp *ftp, char *filename)
 	}
     }
 
-  exit:free(line);
+  exit:
+    free(line);
     fclose(fp);
     return returncode;
 }

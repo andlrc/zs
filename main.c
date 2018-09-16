@@ -60,7 +60,8 @@ print_error(char *format, ...)
 
     fputs(buf, stderr);
 
-  exit:free(buf);
+  exit:
+    free(buf);
     va_end(ap);
     va_end(ap2);
 }
