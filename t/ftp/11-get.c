@@ -9,6 +9,7 @@
 #include <errno.h>
 #include <string.h>
 #include <unistd.h>
+#include <stdlib.h>
 #include <limits.h>
 #include "../config.h"
 #include "../../ftp.h"
