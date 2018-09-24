@@ -9,5 +9,5 @@ cat << EOF > config.h
 #define AS400_USER	"$user"
 #define AS400_PASS	"$pass"
 #define AS400_VERBOSITY	"99"
-#define ZS_PATH		"../../zs"
+#define ZS_PATH		"../zs"
 EOF
