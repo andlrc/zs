@@ -7,6 +7,6 @@
 
 #ifndef UTIL_H
 #define UTIL_H 1
-int
-runcmd(int *exit_status, char **stdout, char **stderr, char *const *cmd);
+int             runcmd(int *exit_status, char **stdout, char **stderr,
+		       char *const *cmd);
 #endif

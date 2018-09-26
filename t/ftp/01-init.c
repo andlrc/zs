@@ -9,7 +9,8 @@
 #include "../config.h"
 #include "../../ftp.h"
 
-int main(void)
+int
+main(void)
 {
     struct ftp      ftp;
 

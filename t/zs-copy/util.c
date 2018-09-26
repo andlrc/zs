@@ -26,8 +26,7 @@ struct file {
     int             done;
 };
 
-static
-int
+static int
 readpartfd(struct file *f)
 {
     ssize_t         readlen;
@@ -36,11 +35,15 @@ readpartfd(struct file *f)
     sleeper.tv_sec = 0;
     sleeper.tv_nsec = 100L * 1000L * 1000L;
 
-    /* EOF reached */
+    /*
+     * EOF reached 
+     */
     if (f->done)
 	return 0;
 
-    /* realloc */
+    /*
+     * realloc 
+     */
     if (f->size == f->length) {
 	f->size *= 2;
 	f->buffer = realloc(f->buffer, f->size);
@@ -69,29 +72,31 @@ readpartfd(struct file *f)
     return readlen;
 }
 
-static
-void
+static void
 readfiles(char **pstdout, char **pstderr, int outfd, int errfd)
 {
     struct file     stdout = { outfd, STDOUT_FILENO, NULL, 0, 0, 0 };
     struct file     stderr = { errfd, STDERR_FILENO, NULL, 0, 0, 0 };
 
-    /* allocate stdout */
+    /*
+     * allocate stdout 
+     */
     stdout.size = BUFSIZ;
     stdout.buffer = malloc(stdout.size);
     if (stdout.buffer == NULL) {
 	err(1, "alloc");
     }
 
-    /* allocate stderr */
+    /*
+     * allocate stderr 
+     */
     stderr.size = BUFSIZ;
     stderr.buffer = malloc(stderr.size);
     if (stderr.buffer == NULL) {
 	err(1, "alloc");
     }
 
-    while (readpartfd(&stdout) != 0 || readpartfd(&stderr) != 0)
-	/* read more */;
+    while (readpartfd(&stdout) != 0 || readpartfd(&stderr) != 0);
 
     close(stdout.fd);
     close(stderr.fd);
@@ -106,7 +111,7 @@ runcmd(int *exit_status, char **stdout, char **stderr, char *const *cmd)
     int             _exit_status;
     int             stdoutfd[2];
     int             stderrfd[2];
-    char * const *  p;
+    char           *const *p;
 
     *exit_status = 0;
     *stdout = NULL;
@@ -120,7 +125,9 @@ runcmd(int *exit_status, char **stdout, char **stderr, char *const *cmd)
 	err(1, "pipe");
     }
 
-    /* print command line */
+    /*
+     * print command line 
+     */
     printf("%s", *cmd);
     for (p = cmd + 1; *p; p++) {
 	printf(" %s", *p);
