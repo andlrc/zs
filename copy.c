@@ -317,6 +317,7 @@ main_copy(int argc, char **argv)
     int             i;
     int             childrc;
     int             pipefd[2];
+    pid_t           childpid = -1;
     struct ftp      sourceftp;
     struct ftp      targetftp;
     struct sourceopt sourceopt;
@@ -395,7 +396,8 @@ main_copy(int argc, char **argv)
 			    util_strerror(rc));
 	    break;
 	default:
-	    return 2;
+	    exit_status = 2;
+	    goto exit;
 	}
     }
 
@@ -414,24 +416,28 @@ main_copy(int argc, char **argv)
 
     if (*sourceopt.objects[0].obj == '\0') {
 	print_error("missing object\n");
-	return 2;
+	exit_status = 2;
+	goto exit;
     }
 
     if (pipe(pipefd) != 0) {
 	print_error("failed to create pipe: %s\n", strerror(errno));
-	return 1;
+	exit_status = 1;
+	goto exit;
     }
 
     if (ftp_connect(&sourceftp) == -1) {
 	print_error("failed to connect to source: %s\n",
 		    ftp_strerror(&sourceftp));
-	return 1;
+	exit_status = 1;
+	goto exit;
     }
 
     if (ftp_connect(&targetftp) == -1) {
 	print_error("failed to connect to target: %s\n",
 		    ftp_strerror(&targetftp));
-	return 1;
+	exit_status = 1;
+	goto exit;
     }
 
     /*
@@ -454,10 +460,11 @@ main_copy(int argc, char **argv)
 	strcpy(sourceopt.types[0], "*ALL");
     }
 
-    switch (fork()) {
+    switch ((childpid = fork())) {
     case -1:
 	print_error("failed to fork: %s\n", strerror(errno));
-	return 1;
+	exit_status = 1;
+	goto exit;
     case 0:
 	targetopt.pipe = pipefd[0];
 	close(pipefd[1]);
@@ -483,6 +490,11 @@ main_copy(int argc, char **argv)
 	    exit_status = 1;
 	}
 	break;
+    }
+
+  exit:
+    if (childpid > 0 && sourceftp.verbosity >= FTP_VERBOSE_SOME) {
+	printf("\nEXIT_STATUS = %d\n", exit_status);
     }
 
     ftp_close(&sourceftp);

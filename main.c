@@ -9,7 +9,7 @@
 #include <stdlib.h>
 
 char           *program_name;
-#define PROGRAM_VERSION	"2.15"
+#define PROGRAM_VERSION	"2.16"
 
 int             main_copy(int, char **);
 int             main_analyze(int, char **);
