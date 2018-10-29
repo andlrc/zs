@@ -2,7 +2,7 @@
 # Copyright (C) 2018  Andreas Louv <andreas@louv.dk>
 # See LICENSE
 
-CFLAGS	= -O2 -Wall -Wextra -Wpedantic -Wshadow
+CFLAGS	= -O2 -std=c99 -Wall -Wextra -Wpedantic -Wshadow -D_POSIX_C_SOURCE=200809L
 
 OFILES	= main.o analyze.o copy.o ftp.o util.o
 

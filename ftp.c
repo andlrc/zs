@@ -12,7 +12,7 @@
 #include <sys/socket.h>
 #include <netdb.h>
 #include <stdarg.h>
-#include <time.h>
+#include <sys/time.h>
 #include "ftp.h"
 
 /*
