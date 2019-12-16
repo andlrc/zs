@@ -349,7 +349,7 @@ main_copy(int argc, char **argv)
 	    ftp_set_variable(&sourceftp, FTP_VAR_PORT, optarg);
 	    break;
 	case 'l':		/* source libl */
-	    rc = util_parselibl(&sourceopt, optarg);
+	    rc = util_parselibl(sourceopt.libl, optarg);
 	    if (rc != 0)
 		print_error("failed to parse library list: %s\n",
 			    util_strerror(rc));

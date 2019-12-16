@@ -108,7 +108,7 @@ util_parsecfg(struct ftp *ftp, char *filename)
  * split the input libl on comma and store in "sourceopt->libl"
  */
 int
-util_parselibl(struct sourceopt *sourceopt, char *optlibl)
+util_parselibl(char libl[Z_LIBLMAX][Z_LIBSIZ], char *optlibl)
 {
     char           *saveptr;
     char           *p;
@@ -120,8 +120,8 @@ util_parselibl(struct sourceopt *sourceopt, char *optlibl)
 	    return EUTIL_LIBOVERFLOW;
 	}
 
-	strncpy(sourceopt->libl[i], p, Z_LIBSIZ);
-	sourceopt->libl[i][Z_LIBSIZ - 1] = '\0';
+	strncpy(libl[i], p, Z_LIBSIZ);
+	libl[i][Z_LIBSIZ - 1] = '\0';
 	i++;
     } while ((p = strtok_r(NULL, ",", &saveptr)) != NULL);
 

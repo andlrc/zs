@@ -16,7 +16,7 @@ enum util_errors {
 };
 
 int             util_parsecfg(struct ftp *, char *);
-int             util_parselibl(struct sourceopt *, char *);
+int             util_parselibl(char[Z_LIBLMAX][Z_LIBSIZ], char *);
 int             util_parsetypes(struct sourceopt *, char *);
 int             util_parseobj(struct object *, char *);
 const char     *util_strerror(int errnum);

@@ -9,30 +9,33 @@
 #define INIT_TAB_SIZE 64
 
 struct ctx {
-    char          **tab;
+    struct object  *tab;
     unsigned int    tablen;
     unsigned int    tabsiz;
     struct ftp      ftp;
+    char            libl[Z_LIBLMAX][Z_LIBSIZ];
 };
 
-struct dspdbrtab {
-    char            whrtyp[1];
-    char            whrfi[10];
-    char            whrli[10];
-    char            whrmb[10];
-    char            whrrd[10];
-    char            whno[7];
-    char            whdtm[13];
-    char            whrefi[10];
-    char            whreli[10];
-    char            whremb[10];
-    char            whtype[1];
-    char            whjdil[4];
-    char            whjref[4];
+struct dsppgmref {
+    char            whlib[10];
+    char            whpnam[10];
+    char            whtext[50];
+    char            whfnum[7];	/* numeric 5 */
+    char            whdttm[13];
+    char            whfnam[11];
+    char            whlnam[11];
+    char            whsnam[11];
+    char            whrfno[5];	/* numeric 3 */
+    char            whfusg[4];	/* numeric 2 */
+    char            whrfnm[10];
+    char            whrfsn[13];
+    char            whrffn[7];	/* numeric 7 */
+    char            whobjt[1];
+    char            whotyp[10];
     char            whsysn[8];
-    char            whctln[10];
-    char            whcstn[258];
-    char            NL[1];
+    char            whspkg[1];
+    char            whrfnb[7];	/* numeric 5 */
+    char            __nl[1];    /* trailing newline */
 } __attribute__ ((packed));
 
 #endif
